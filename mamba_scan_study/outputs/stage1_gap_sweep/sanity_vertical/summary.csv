@@ -1,2 +1,0 @@
-block_type,task_dir,grid_size,signal_strength,pos_mode,row_mean,row_std,col_mean,col_std,diag_mean,diag_std,anti_diag_mean,anti_diag_std,gap_col_minus_row,gap_row_minus_col,gap_diag_minus_row,gap_diag_minus_col
-gru,vertical,8,single_patch,xy_learned,0.46484375,0.0,0.984375,0.0,,,,,0.51953125,,,

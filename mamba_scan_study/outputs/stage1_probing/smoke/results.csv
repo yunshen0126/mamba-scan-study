@@ -1,5 +1,0 @@
-block_type,task_dir,branch_dirs,grid_size,signal_strength,pos_mode,seed,backbone_best_acc,backbone_last_acc,probe_best_acc,probe_last_acc,row_distance,col_distance,scan_distance,param_count,probe_param_count,elapsed_sec,skipped,skip_reason
-gru,vertical,row,8,single_patch,xy_learned,0,0.40625,0.40625,0.5078125,0.5078125,7.0,0.0,56.0,8642,66,1.460829734802246,False,
-gru,vertical,col,8,single_patch,xy_learned,0,0.4296875,0.4296875,0.53125,0.53125,7.0,0.0,7.0,8642,66,0.20732665061950684,False,
-mamba,vertical,row,8,single_patch,xy_learned,0,0.4375,0.4375,0.4453125,0.4453125,7.0,0.0,56.0,12226,66,0.5457210540771484,False,
-mamba,vertical,col,8,single_patch,xy_learned,0,0.453125,0.453125,0.4453125,0.4453125,7.0,0.0,7.0,12226,66,0.20365667343139648,False,

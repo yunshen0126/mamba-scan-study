@@ -1,7 +1,0 @@
-block_type,grid,fastest_micro_batch
-gru,8,128
-gru,16,128
-gru,32,128
-mamba,8,128
-mamba,16,128
-mamba,32,64

@@ -1,5 +1,0 @@
-/home/tuling/miniconda3/envs/mair/lib/python3.10/site-packages/torch/nn/modules/conv.py:459: UserWarning: Applied workaround for CuDNN issue, install nvrtc.so (Triggered internally at ../aten/src/ATen/native/cudnn/Conv_v8.cpp:80.)
-  return F.conv2d(input, weight, bias, self.stride,
-saved predictions: mamba_scan_study/outputs/stage1_direction_ablation/cifar10_visual_seed0/visual_analysis/per_sample_predictions.csv
-saved figures: mamba_scan_study/outputs/stage1_direction_ablation/cifar10_visual_seed0/visual_analysis/figures
-saved manifest: mamba_scan_study/outputs/stage1_direction_ablation/cifar10_visual_seed0/visual_analysis/visual_analysis_manifest.json

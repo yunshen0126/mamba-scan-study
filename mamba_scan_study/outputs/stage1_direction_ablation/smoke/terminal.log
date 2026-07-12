@@ -1,18 +1,0 @@
-device=cuda HAS_MAMBA=True dataset=cifar10 outdir=mamba_scan_study/outputs/stage1_direction_ablation/smoke
-note=real_4dir and same_row_4 are full-branch multi-path variants, not channel-split GroupMamba
-Downloading https://cave.cs.toronto.edu/kriz/cifar-10-python.tar.gz to data/cifar-10-python.tar.gz
-  0%|          | 0/170498071 [00:00<?, ?it/s]  0%|          | 0/170498071 [00:00<?, ?it/s]
-SKIP_ALL reason=dataset_setup_error: setup timed out after 10 seconds
-SKIP dataset=cifar10 block=gru variant=row branches=row pos=xy_learned seed=0 reason=dataset_setup_error: setup timed out after 10 seconds
-SKIP dataset=cifar10 block=gru variant=col branches=col pos=xy_learned seed=0 reason=dataset_setup_error: setup timed out after 10 seconds
-SKIP dataset=cifar10 block=gru variant=real_4dir branches=row,col,diag,anti_diag pos=xy_learned seed=0 reason=dataset_setup_error: setup timed out after 10 seconds
-SKIP dataset=cifar10 block=gru variant=same_row_4 branches=row,row,row,row pos=xy_learned seed=0 reason=dataset_setup_error: setup timed out after 10 seconds
-SKIP dataset=cifar10 block=gru variant=bidir_row branches= pos=xy_learned seed=0 reason=dataset_setup_error: setup timed out after 10 seconds
-SKIP dataset=cifar10 block=mamba variant=row branches=row pos=xy_learned seed=0 reason=dataset_setup_error: setup timed out after 10 seconds
-SKIP dataset=cifar10 block=mamba variant=col branches=col pos=xy_learned seed=0 reason=dataset_setup_error: setup timed out after 10 seconds
-SKIP dataset=cifar10 block=mamba variant=real_4dir branches=row,col,diag,anti_diag pos=xy_learned seed=0 reason=dataset_setup_error: setup timed out after 10 seconds
-SKIP dataset=cifar10 block=mamba variant=same_row_4 branches=row,row,row,row pos=xy_learned seed=0 reason=dataset_setup_error: setup timed out after 10 seconds
-SKIP dataset=cifar10 block=mamba variant=bidir_row branches= pos=xy_learned seed=0 reason=dataset_setup_error: setup timed out after 10 seconds
-saved results: mamba_scan_study/outputs/stage1_direction_ablation/smoke/results.csv
-saved summary: mamba_scan_study/outputs/stage1_direction_ablation/smoke/summary.csv
-saved json   : mamba_scan_study/outputs/stage1_direction_ablation/smoke/results.json

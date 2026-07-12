@@ -1,5 +1,0 @@
-block_type,task_dir,grid_size,signal_strength,pos_mode,row_mean,row_std,col_mean,col_std,diag_mean,diag_std,anti_diag_mean,anti_diag_std,gap_col_minus_row,gap_row_minus_col,gap_diag_minus_row,gap_diag_minus_col
-mamba,horizontal,8,single_patch,xy_learned,0.9993489583333334,0.0009207119546699837,0.515625,0.0088790245423085,,,,,,0.48372395833333337,,
-mamba,horizontal,16,single_patch,xy_learned,0.8411458333333334,0.22465371693947603,0.4856770833333333,0.014817456610339898,,,,,,0.35546875000000006,,
-mamba,vertical,8,single_patch,xy_learned,0.5123697916666666,0.017638303625187587,0.9876302083333334,0.017493527138729693,,,,,0.47526041666666674,,,
-mamba,vertical,16,single_patch,xy_learned,0.5052083333333334,0.02240188871625684,0.7083333333333334,0.20623947784607635,,,,,0.203125,,,

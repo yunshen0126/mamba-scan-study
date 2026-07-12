@@ -1,2 +1,0 @@
-dataset,block_type,variant,branch_dirs,pos_mode,seed,best_acc,last_acc,param_count,elapsed_sec,best_epoch,skipped,skip_reason
-cifar10,mamba,row,row,xy_learned,0,0.3394,0.3394,12490,26.974866151809692,0,False,
