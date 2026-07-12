@@ -1,0 +1,9 @@
+dataset,block_type,variant,branch_dirs,pos_mode,mean,std,accs,delta_vs_row,delta_vs_same_row_4
+cifar10,gru,row,row,xy_learned,0.3269,0.0,[0.3269],0.0,-0.01699999999999996
+cifar10,gru,col,col,xy_learned,0.3331,0.0,[0.3331],0.006199999999999983,-0.010799999999999976
+cifar10,gru,real_4dir,"row,col,diag,anti_diag",xy_learned,0.3449,0.0,[0.3449],0.01799999999999996,0.0010000000000000009
+cifar10,gru,same_row_4,"row,row,row,row",xy_learned,0.3439,0.0,[0.3439],0.01699999999999996,0.0
+cifar10,mamba,row,row,xy_learned,0.3394,0.0,[0.3394],0.0,-0.029500000000000026
+cifar10,mamba,col,col,xy_learned,0.3288,0.0,[0.3288],-0.010599999999999998,-0.040100000000000025
+cifar10,mamba,real_4dir,"row,col,diag,anti_diag",xy_learned,0.356,0.0,[0.356],0.016600000000000004,-0.012900000000000023
+cifar10,mamba,same_row_4,"row,row,row,row",xy_learned,0.3689,0.0,[0.3689],0.029500000000000026,0.0

@@ -1,0 +1,48 @@
+{
+  "status": "complete",
+  "key": "cifar10_up64|mamba|32|real_4dir",
+  "dataset": "cifar10_up64",
+  "block_type": "mamba",
+  "variant": "real_4dir",
+  "branch_dirs": "row,col,diag,anti_diag",
+  "grid": 32,
+  "sequence_length": 1024,
+  "patch_size": 2,
+  "seed": 0,
+  "micro_batch": 32,
+  "accum_steps": 4,
+  "effective_batch": 128,
+  "shuffle_order": false,
+  "shuffle_seed": null,
+  "shuffle_perm": null,
+  "param_count": 283274,
+  "peak_allocated_mb": 691.97021484375,
+  "peak_reserved_mb": 820.0,
+  "elapsed_sec": 194.74802136799553,
+  "history": [
+    {
+      "epoch": 1,
+      "lr": 0.001,
+      "lr_scale": 1.0,
+      "train_loss": 1.737725797597028,
+      "train_acc": 0.35497359154929575,
+      "test_loss": 1.5197554595947265,
+      "test_acc": 0.4386,
+      "train_sec": 91.27249342099822,
+      "eval_sec": 6.5895393829996465,
+      "epoch_wall_sec": 97.86203430399473
+    },
+    {
+      "epoch": 2,
+      "lr": 0.0,
+      "lr_scale": 0.0,
+      "train_loss": 1.4759449598578576,
+      "train_acc": 0.45904689500640206,
+      "test_loss": 1.5197554595947265,
+      "test_acc": 0.4386,
+      "train_sec": 90.17827455699444,
+      "eval_sec": 6.692334172999836,
+      "epoch_wall_sec": 96.87061092999647
+    }
+  ]
+}

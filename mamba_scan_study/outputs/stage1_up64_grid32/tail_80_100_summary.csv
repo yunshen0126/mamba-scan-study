@@ -1,0 +1,2 @@
+block_type,grid,epochs,order_utilization_mean,order_utilization_std,order_utilization_min,order_utilization_max,order_utilization_range,order_utilization_last
+gru,32,80-100,0.07471428571428572,0.001859924656509299,0.06969999999999998,0.07910000000000006,0.009400000000000075,0.07569999999999999

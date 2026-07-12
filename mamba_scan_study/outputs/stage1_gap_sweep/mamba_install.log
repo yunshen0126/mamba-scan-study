@@ -1,0 +1,39 @@
+Looking in indexes: https://pypi.tuna.tsinghua.edu.cn/simple
+Collecting causal-conv1d
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/63/5c/2403b8410122d159405c4bd8456340c7251c193358fa24d30cb273fb5048/causal_conv1d-1.6.2.post1.tar.gz (29 kB)
+  Installing build dependencies: started
+  Installing build dependencies: still running...
+  Installing build dependencies: finished with status 'error'
+  error: subprocess-exited-with-error
+  
+  × pip subprocess to install build dependencies did not run successfully.
+  │ exit code: 1
+  ╰─> [18 lines of output]
+      Looking in indexes: https://pypi.tuna.tsinghua.edu.cn/simple
+      WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='pypi.tuna.tsinghua.edu.cn', port=443): Read timed out. (read timeout=15)")': /simple/setuptools/
+      Collecting setuptools
+        Downloading https://pypi.tuna.tsinghua.edu.cn/packages/9d/76/f789f7a86709c6b087c5a2f52f911838cad707cc613162401badc665acfe/setuptools-82.0.1-py3-none-any.whl (1.0 MB)
+           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.0/1.0 MB 401.6 kB/s eta 0:00:00
+      Collecting wheel
+        Downloading https://pypi.tuna.tsinghua.edu.cn/packages/87/1b/9e33c09813d65e248f7f773119148a612516a4bea93e9c6f545f78455b7c/wheel-0.47.0-py3-none-any.whl (32 kB)
+      Collecting torch
+        Downloading https://pypi.tuna.tsinghua.edu.cn/packages/ff/4a/0300261818e1560d72cc160ac826005507e8b7ca0a35788b591436d05b4a/torch-2.12.1-cp313-cp313-macosx_14_0_arm64.whl (88.0 MB)
+           ━━━━━━━━                                18.9/88.0 MB 346.6 kB/s eta 0:03:20
+        WARNING: Connection timed out while downloading.
+      error: incomplete-download
+      
+      × Download failed because not enough bytes were received (18.9 MB/88.0 MB)
+      ╰─> URL: https://pypi.tuna.tsinghua.edu.cn/packages/ff/4a/0300261818e1560d72cc160ac826005507e8b7ca0a35788b591436d05b4a/torch-2.12.1-cp313-cp313-macosx_14_0_arm64.whl
+      
+      note: This is an issue with network connectivity, not pip.
+      hint: Consider using --resume-retries to enable download resumption.
+      [end of output]
+  
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+error: subprocess-exited-with-error
+
+× pip subprocess to install build dependencies did not run successfully.
+│ exit code: 1
+╰─> See above for output.
+
+note: This error originates from a subprocess, and is likely not a problem with pip.

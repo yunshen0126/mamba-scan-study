@@ -1,0 +1,9 @@
+# Stage 1A gap sweep.
+block_types: [gru, mamba]
+task_dirs: [vertical, horizontal, diagonal]
+branch_dirs: [row, col, diag, anti_diag]
+grid_sizes: [8, 16, 24, 32]
+signal_strengths: [single_patch, single_pixel]
+pos_modes: [none, xy_learned]
+seeds: [0, 1, 2]
+readout_mode: target

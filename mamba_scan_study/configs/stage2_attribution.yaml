@@ -1,0 +1,9 @@
+# Stage 2 placeholder. Run only if Stage 1 supports Q1.
+groups:
+  single: [row]
+  real_4dir: [row, col, diag, anti_diag]
+  ensemble_seed: [row, row, row, row]
+  ensemble_dropout: [row, row, row, row]
+  real_4dir_shuffled: [row, col, diag, anti_diag]
+seeds: [0, 1, 2]
+

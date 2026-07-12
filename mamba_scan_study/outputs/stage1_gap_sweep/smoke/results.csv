@@ -1,0 +1,5 @@
+block_type,task_dir,branch_dirs,grid_size,signal_strength,pos_mode,seed,best_acc,last_acc,param_count,elapsed_sec,skipped,skip_reason
+gru,vertical,row,8,single_patch,xy_learned,0,0.4140625,0.4140625,8642,0.11514806747436523,False,
+gru,vertical,col,8,single_patch,xy_learned,0,0.4140625,0.4140625,8642,0.06410908699035645,False,
+mamba,vertical,row,8,single_patch,xy_learned,0,,,,0.0,True,mamba_ssm_not_installed
+mamba,vertical,col,8,single_patch,xy_learned,0,,,,0.0,True,mamba_ssm_not_installed

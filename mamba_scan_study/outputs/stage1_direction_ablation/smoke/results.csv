@@ -1,0 +1,11 @@
+dataset,block_type,variant,branch_dirs,pos_mode,seed,best_acc,last_acc,param_count,elapsed_sec,skipped,skip_reason
+cifar10,gru,row,row,xy_learned,0,,,,0.0,True,dataset_setup_error: setup timed out after 10 seconds
+cifar10,gru,col,col,xy_learned,0,,,,0.0,True,dataset_setup_error: setup timed out after 10 seconds
+cifar10,gru,real_4dir,"row,col,diag,anti_diag",xy_learned,0,,,,0.0,True,dataset_setup_error: setup timed out after 10 seconds
+cifar10,gru,same_row_4,"row,row,row,row",xy_learned,0,,,,0.0,True,dataset_setup_error: setup timed out after 10 seconds
+cifar10,gru,bidir_row,,xy_learned,0,,,,0.0,True,dataset_setup_error: setup timed out after 10 seconds
+cifar10,mamba,row,row,xy_learned,0,,,,0.0,True,dataset_setup_error: setup timed out after 10 seconds
+cifar10,mamba,col,col,xy_learned,0,,,,0.0,True,dataset_setup_error: setup timed out after 10 seconds
+cifar10,mamba,real_4dir,"row,col,diag,anti_diag",xy_learned,0,,,,0.0,True,dataset_setup_error: setup timed out after 10 seconds
+cifar10,mamba,same_row_4,"row,row,row,row",xy_learned,0,,,,0.0,True,dataset_setup_error: setup timed out after 10 seconds
+cifar10,mamba,bidir_row,,xy_learned,0,,,,0.0,True,dataset_setup_error: setup timed out after 10 seconds

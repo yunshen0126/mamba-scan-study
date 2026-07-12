@@ -1,0 +1,99 @@
+{
+  "args": {
+    "dataset": "cifar10",
+    "data_root": "data",
+    "block_types": [
+      "mamba"
+    ],
+    "variants": [
+      "row"
+    ],
+    "seeds": [
+      0
+    ],
+    "epochs": 1,
+    "batch_size": 256,
+    "d_model": 32,
+    "n_layers": 1,
+    "patch_size": 4,
+    "pos_mode": "xy_learned",
+    "lr": 0.001,
+    "weight_decay": 0.05,
+    "grad_clip": 1.0,
+    "num_workers": 0,
+    "setup_timeout_sec": 900,
+    "outdir": "mamba_scan_study/outputs/stage1_direction_ablation/checkpoint_smoke",
+    "save_checkpoints": true,
+    "checkpoint_dir": "",
+    "smoke": false
+  },
+  "has_mamba": true,
+  "stage0_config_schema": {
+    "dataset": "synthetic",
+    "data_root": "data",
+    "task_dir": "vertical",
+    "signal_strength": "single_patch",
+    "amplitude": 2.5,
+    "noise_std": 1.0,
+    "shuffle_source": false,
+    "grid_size": 8,
+    "img_size": 32,
+    "patch_size": 4,
+    "in_chans": 3,
+    "n_classes": 2,
+    "train_samples": 4096,
+    "test_samples": 1024,
+    "block_type": "gru",
+    "branch_dirs": "row",
+    "n_branches": null,
+    "bidirectional": false,
+    "d_model": 64,
+    "n_layers": 2,
+    "dropout": 0.0,
+    "shuffle_order": false,
+    "pos_mode": "seq_learned",
+    "readout_mode": "target",
+    "epochs": 5,
+    "batch_size": 128,
+    "lr": 0.001,
+    "weight_decay": 0.05,
+    "grad_clip": 1.0,
+    "num_workers": 0,
+    "seeds": [
+      0
+    ],
+    "outdir": "mamba_scan_study/outputs/stage0"
+  },
+  "note": "real_4dir and same_row_4 are full-branch multi-path variants, not channel-split GroupMamba",
+  "rows": [
+    {
+      "dataset": "cifar10",
+      "block_type": "mamba",
+      "variant": "row",
+      "branch_dirs": "row",
+      "pos_mode": "xy_learned",
+      "seed": 0,
+      "best_acc": 0.3394,
+      "last_acc": 0.3394,
+      "param_count": 12490,
+      "elapsed_sec": 26.974866151809692,
+      "best_epoch": 0,
+      "skipped": false,
+      "skip_reason": ""
+    }
+  ],
+  "summary": [
+    {
+      "dataset": "cifar10",
+      "block_type": "mamba",
+      "variant": "row",
+      "branch_dirs": "row",
+      "pos_mode": "xy_learned",
+      "mean": 0.3394,
+      "std": 0.0,
+      "accs": "[0.3394]",
+      "delta_vs_row": 0.0,
+      "delta_vs_same_row_4": ""
+    }
+  ]
+}

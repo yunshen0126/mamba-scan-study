@@ -1,0 +1,5 @@
+<3>WSL (11 - Relay) ERROR: UtilTranslatePathList:2878: Failed to translate D:\anaconda
+<3>WSL (11 - Relay) ERROR: UtilTranslatePathList:2878: Failed to translate D:\anaconda\Library\mingw-w64\bin
+<3>WSL (11 - Relay) ERROR: UtilTranslatePathList:2878: Failed to translate D:\anaconda\Library\usr\bin
+<3>WSL (11 - Relay) ERROR: UtilTranslatePathList:2878: Failed to translate D:\anaconda\Library\bin
+<3>WSL (11 - Relay) ERROR: UtilTranslatePathList:2878: Failed to translate D:\anaconda\Scripts

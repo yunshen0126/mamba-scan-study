@@ -1,0 +1,14 @@
+dataset: synthetic
+task_dir: vertical
+signal_strength: single_patch
+amplitude: 2.5
+noise_std: 1.0
+shuffle_source: false
+grid_size: 8
+patch_size: 4
+block_type: gru
+branch_dirs: row
+pos_mode: xy_learned
+readout_mode: target
+epochs: 5
+seeds: [0]

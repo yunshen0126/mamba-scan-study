@@ -1,0 +1,6 @@
+# Stage 1B placeholder. Backbone is frozen before training the linear probe.
+dataset: cifar10
+backbones: [row, col, bidirectional]
+distance_bins: [1, 2, 4, 8, 16, 32]
+seeds: [0, 1, 2]
+

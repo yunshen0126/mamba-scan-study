@@ -1,0 +1,2 @@
+dataset,block_type,variant,branch_dirs,pos_mode,mean,std,accs,delta_vs_row,delta_vs_same_row_4
+cifar10,mamba,row,row,xy_learned,0.3394,0.0,[0.3394],0.0,

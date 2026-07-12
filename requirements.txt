@@ -1,0 +1,6 @@
+torch>=2.0
+torchvision>=0.15
+numpy>=1.23
+# 可选：装了才能用真实 Mamba（--block-type mamba）。Windows 上较难装，装不上就用默认 gru。
+# mamba-ssm>=2.0
+# causal-conv1d>=1.2

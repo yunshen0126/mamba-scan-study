@@ -1,0 +1,48 @@
+{
+  "status": "complete",
+  "key": "cifar10_up64|gru|32|real_4dir",
+  "dataset": "cifar10_up64",
+  "block_type": "gru",
+  "variant": "real_4dir",
+  "branch_dirs": "row,col,diag,anti_diag",
+  "grid": 32,
+  "sequence_length": 1024,
+  "patch_size": 2,
+  "seed": 0,
+  "micro_batch": 128,
+  "accum_steps": 1,
+  "effective_batch": 128,
+  "shuffle_order": false,
+  "shuffle_seed": null,
+  "shuffle_perm": null,
+  "param_count": 221834,
+  "peak_allocated_mb": 2043.60302734375,
+  "peak_reserved_mb": 2434.0,
+  "elapsed_sec": 111.00878844999534,
+  "history": [
+    {
+      "epoch": 1,
+      "lr": 0.001,
+      "lr_scale": 1.0,
+      "train_loss": 1.7804573205801157,
+      "train_acc": 0.3419871794871795,
+      "test_loss": 1.53753291015625,
+      "test_acc": 0.44,
+      "train_sec": 51.17290917500213,
+      "eval_sec": 4.500476943998365,
+      "epoch_wall_sec": 55.67338791899965
+    },
+    {
+      "epoch": 2,
+      "lr": 0.0,
+      "lr_scale": 0.0,
+      "train_loss": 1.5231121711241893,
+      "train_acc": 0.44320913461538464,
+      "test_loss": 1.53753291015625,
+      "test_acc": 0.44,
+      "train_sec": 50.804146563008544,
+      "eval_sec": 4.518077223008731,
+      "epoch_wall_sec": 55.32222648600873
+    }
+  ]
+}

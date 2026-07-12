@@ -1,0 +1,10 @@
+device=cuda HAS_MAMBA=True dataset=cifar10 outdir=mamba_scan_study/outputs/stage1_direction_ablation/cifar10_visual_seed0
+note=real_4dir and same_row_4 are full-branch multi-path variants, not channel-split GroupMamba
+/home/tuling/miniconda3/envs/mair/lib/python3.10/site-packages/torch/nn/modules/conv.py:459: UserWarning: Applied workaround for CuDNN issue, install nvrtc.so (Triggered internally at ../aten/src/ATen/native/cudnn/Conv_v8.cpp:80.)
+  return F.conv2d(input, weight, bias, self.stride,
+best=0.7595 dataset=cifar10 block=mamba variant=row branches=row pos=xy_learned seed=0 reason=
+best=0.7907 dataset=cifar10 block=mamba variant=real_4dir branches=row,col,diag,anti_diag pos=xy_learned seed=0 reason=
+best=0.7811 dataset=cifar10 block=mamba variant=same_row_4 branches=row,row,row,row pos=xy_learned seed=0 reason=
+saved results: mamba_scan_study/outputs/stage1_direction_ablation/cifar10_visual_seed0/results.csv
+saved summary: mamba_scan_study/outputs/stage1_direction_ablation/cifar10_visual_seed0/summary.csv
+saved json   : mamba_scan_study/outputs/stage1_direction_ablation/cifar10_visual_seed0/results.json

@@ -1,0 +1,5 @@
+block_type,grid,micro_batch,best_test_acc,best_epoch,status,plateau_epoch,smoothed_acc,future_gain
+gru,8,128,0.7475,58,not_converged_by_probe_end,,0.7460399999999999,
+gru,32,128,0.7193,47,plateau_observed,50,0.71274,0.0006200000000000649
+mamba,8,128,0.7791,60,not_converged_by_probe_end,,0.77344,
+mamba,32,64,0.7353,60,not_converged_by_probe_end,,0.7246,

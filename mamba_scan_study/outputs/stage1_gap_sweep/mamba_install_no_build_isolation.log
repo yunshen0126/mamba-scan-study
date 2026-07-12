@@ -1,0 +1,42 @@
+Collecting causal-conv1d
+  Downloading causal_conv1d-1.6.2.post1.tar.gz (29 kB)
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'error'
+  error: subprocess-exited-with-error
+  
+  × Preparing metadata (pyproject.toml) did not run successfully.
+  │ exit code: 1
+  ╰─> [23 lines of output]
+      <string>:122: UserWarning: causal_conv1d was requested, but nvcc was not found.  Are you sure your environment has nvcc available?  If you're installing within a container from https://hub.docker.com/r/pytorch/pytorch, only images whose names contain 'devel' will provide nvcc.
+      
+      
+      torch.__version__  = 2.7.1
+      
+      
+      Traceback (most recent call last):
+        File "/Users/yunshen/miniconda3/lib/python3.13/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py", line 389, in <module>
+          main()
+          ~~~~^^
+        File "/Users/yunshen/miniconda3/lib/python3.13/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py", line 373, in main
+          json_out["return_val"] = hook(**hook_input["kwargs"])
+                                   ~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+        File "/Users/yunshen/miniconda3/lib/python3.13/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py", line 175, in prepare_metadata_for_build_wheel
+          return hook(metadata_directory, config_settings)
+        File "/Users/yunshen/miniconda3/lib/python3.13/site-packages/setuptools/build_meta.py", line 377, in prepare_metadata_for_build_wheel
+          self.run_setup()
+          ~~~~~~~~~~~~~~^^
+        File "/Users/yunshen/miniconda3/lib/python3.13/site-packages/setuptools/build_meta.py", line 320, in run_setup
+          exec(code, locals())
+          ~~~~^^^^^^^^^^^^^^^^
+        File "<string>", line 185, in <module>
+      NameError: name 'bare_metal_version' is not defined
+      [end of output]
+  
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+error: metadata-generation-failed
+
+× Encountered error while generating package metadata.
+╰─> See above for output.
+
+note: This is an issue with the package mentioned above, not pip.
+hint: See above for details.

@@ -1,0 +1,377 @@
+{
+  "config": {
+    "datasets": [
+      "cifar10"
+    ],
+    "block_types": [
+      "gru",
+      "mamba"
+    ],
+    "grids": [
+      8,
+      16,
+      32
+    ],
+    "data_root": "data",
+    "outdir": "mamba_scan_study/outputs/timing_pilot_smoke",
+    "epochs": 1,
+    "batch_size": 8,
+    "accum_steps": 16,
+    "d_model": 64,
+    "n_layers": 2,
+    "pos_mode": "xy_learned",
+    "lr": 0.001,
+    "weight_decay": 0.05,
+    "grad_clip": 1.0,
+    "num_workers": 0,
+    "seed": 0,
+    "amp": true,
+    "calibration_warmup": 0,
+    "calibration_steps": 1,
+    "max_train_batches": 2,
+    "max_test_batches": 2,
+    "full_epochs": 30,
+    "electricity_cny_per_kwh": 0.6
+  },
+  "torch_version": "2.0.1+cu118",
+  "cuda_version": "11.8",
+  "has_mamba": true,
+  "results": [
+    {
+      "key": "cifar10|gru|8",
+      "dataset": "cifar10",
+      "block_type": "gru",
+      "grid": 8,
+      "sequence_length": 64,
+      "img_size": 32,
+      "patch_size": 4,
+      "pilot_variant": "row",
+      "seed": 0,
+      "epochs": [
+        {
+          "epoch": 1,
+          "train_sec": 1.1402243560000045,
+          "eval_sec": 0.017340696000005096,
+          "epoch_wall_sec": 1.1575662519999952,
+          "train": {
+            "loss": 2.4052734375,
+            "acc": 0.0,
+            "samples": 16,
+            "batches": 2
+          },
+          "test": {
+            "loss": 2.1810302734375,
+            "acc": 0.1875,
+            "samples": 16,
+            "batches": 2
+          }
+        }
+      ],
+      "mean_epoch_sec": 1.1575662519999952,
+      "mean_train_sec": 1.1402243560000045,
+      "mean_eval_sec": 0.017340696000005096,
+      "row_peak_memory_mb": 27.75146484375,
+      "row_param_count": 55178,
+      "mean_power_w": 24.15,
+      "power_samples": 1,
+      "calibration": {
+        "row": {
+          "train_step_sec": 0.011214097000006973,
+          "eval_step_sec": 0.003417600000005905,
+          "peak_memory_mb": 27.6357421875,
+          "param_count": 55178
+        },
+        "real_4dir": {
+          "train_step_sec": 0.045059491000003504,
+          "eval_step_sec": 0.01430209699999807,
+          "peak_memory_mb": 33.80908203125,
+          "param_count": 218762
+        }
+      },
+      "four_to_single_train_ratio": 4.018111400318321,
+      "four_to_single_eval_ratio": 4.184836434917298,
+      "four_peak_memory_mb": 33.80908203125,
+      "prediction_npz": "mamba_scan_study/outputs/timing_pilot_smoke/predictions_cifar10_gru_grid8_seed0.npz"
+    },
+    {
+      "key": "cifar10|gru|16",
+      "dataset": "cifar10",
+      "block_type": "gru",
+      "grid": 16,
+      "sequence_length": 256,
+      "img_size": 32,
+      "patch_size": 2,
+      "pilot_variant": "row",
+      "seed": 0,
+      "epochs": [
+        {
+          "epoch": 1,
+          "train_sec": 0.08985147999999299,
+          "eval_sec": 0.013871297000008553,
+          "epoch_wall_sec": 0.10372397700000136,
+          "train": {
+            "loss": 2.59033203125,
+            "acc": 0.0,
+            "samples": 16,
+            "batches": 2
+          },
+          "test": {
+            "loss": 2.4610595703125,
+            "acc": 0.125,
+            "samples": 16,
+            "batches": 2
+          }
+        }
+      ],
+      "mean_epoch_sec": 0.10372397700000136,
+      "mean_train_sec": 0.08985147999999299,
+      "mean_eval_sec": 0.013871297000008553,
+      "row_peak_memory_mb": 36.51416015625,
+      "row_param_count": 53898,
+      "mean_power_w": 24.33,
+      "power_samples": 1,
+      "calibration": {
+        "row": {
+          "train_step_sec": 0.011888596999995116,
+          "eval_step_sec": 0.0032123990000059166,
+          "peak_memory_mb": 36.4033203125,
+          "param_count": 53898
+        },
+        "real_4dir": {
+          "train_step_sec": 0.035740293000003476,
+          "eval_step_sec": 0.011486496999992823,
+          "peak_memory_mb": 59.0146484375,
+          "param_count": 213642
+        }
+      },
+      "four_to_single_train_ratio": 3.006266677221724,
+      "four_to_single_eval_ratio": 3.5756756866042068,
+      "four_peak_memory_mb": 59.0146484375,
+      "prediction_npz": "mamba_scan_study/outputs/timing_pilot_smoke/predictions_cifar10_gru_grid16_seed0.npz"
+    },
+    {
+      "key": "cifar10|gru|32",
+      "dataset": "cifar10",
+      "block_type": "gru",
+      "grid": 32,
+      "sequence_length": 1024,
+      "img_size": 32,
+      "patch_size": 1,
+      "pilot_variant": "row",
+      "seed": 0,
+      "epochs": [
+        {
+          "epoch": 1,
+          "train_sec": 0.11565647599999807,
+          "eval_sec": 0.025989793999997346,
+          "epoch_wall_sec": 0.14164746999999522,
+          "train": {
+            "loss": 2.40521240234375,
+            "acc": 0.0625,
+            "samples": 16,
+            "batches": 2
+          },
+          "test": {
+            "loss": 2.3106689453125,
+            "acc": 0.0625,
+            "samples": 16,
+            "batches": 2
+          }
+        }
+      ],
+      "mean_epoch_sec": 0.14164746999999522,
+      "mean_train_sec": 0.11565647599999807,
+      "mean_eval_sec": 0.025989793999997346,
+      "row_peak_memory_mb": 148.30224609375,
+      "row_param_count": 55370,
+      "mean_power_w": 24.52,
+      "power_samples": 1,
+      "calibration": {
+        "row": {
+          "train_step_sec": 0.03012439399999778,
+          "eval_step_sec": 0.00705559800000799,
+          "peak_memory_mb": 146.60986328125,
+          "param_count": 55370
+        },
+        "real_4dir": {
+          "train_step_sec": 0.15954606500000068,
+          "eval_step_sec": 0.0261092949999977,
+          "peak_memory_mb": 226.5634765625,
+          "param_count": 219530
+        }
+      },
+      "four_to_single_train_ratio": 5.296241477920268,
+      "four_to_single_eval_ratio": 3.700507738673339,
+      "four_peak_memory_mb": 226.5634765625,
+      "prediction_npz": "mamba_scan_study/outputs/timing_pilot_smoke/predictions_cifar10_gru_grid32_seed0.npz"
+    },
+    {
+      "key": "cifar10|mamba|8",
+      "dataset": "cifar10",
+      "block_type": "mamba",
+      "grid": 8,
+      "sequence_length": 64,
+      "img_size": 32,
+      "patch_size": 4,
+      "pilot_variant": "row",
+      "seed": 0,
+      "epochs": [
+        {
+          "epoch": 1,
+          "train_sec": 0.3978648670000098,
+          "eval_sec": 0.01556930799999634,
+          "epoch_wall_sec": 0.41343557500000827,
+          "train": {
+            "loss": 2.18695068359375,
+            "acc": 0.1875,
+            "samples": 16,
+            "batches": 2
+          },
+          "test": {
+            "loss": 2.24981689453125,
+            "acc": 0.25,
+            "samples": 16,
+            "batches": 2
+          }
+        }
+      ],
+      "mean_epoch_sec": 0.41343557500000827,
+      "mean_train_sec": 0.3978648670000098,
+      "mean_eval_sec": 0.01556930799999634,
+      "row_peak_memory_mb": 21.0048828125,
+      "row_param_count": 70538,
+      "mean_power_w": 25.94,
+      "power_samples": 1,
+      "calibration": {
+        "row": {
+          "train_step_sec": 0.011290505999994593,
+          "eval_step_sec": 0.0029332020000083503,
+          "peak_memory_mb": 20.70068359375,
+          "param_count": 70538
+        },
+        "real_4dir": {
+          "train_step_sec": 0.03758581900000024,
+          "eval_step_sec": 0.011155505999994375,
+          "peak_memory_mb": 30.08740234375,
+          "param_count": 280202
+        }
+      },
+      "four_to_single_train_ratio": 3.328975601272276,
+      "four_to_single_eval_ratio": 3.803183687984195,
+      "four_peak_memory_mb": 30.08740234375,
+      "prediction_npz": "mamba_scan_study/outputs/timing_pilot_smoke/predictions_cifar10_mamba_grid8_seed0.npz"
+    },
+    {
+      "key": "cifar10|mamba|16",
+      "dataset": "cifar10",
+      "block_type": "mamba",
+      "grid": 16,
+      "sequence_length": 256,
+      "img_size": 32,
+      "patch_size": 2,
+      "pilot_variant": "row",
+      "seed": 0,
+      "epochs": [
+        {
+          "epoch": 1,
+          "train_sec": 0.055388428000000545,
+          "eval_sec": 0.015562707999990266,
+          "epoch_wall_sec": 0.07095233599999062,
+          "train": {
+            "loss": 2.26641845703125,
+            "acc": 0.25,
+            "samples": 16,
+            "batches": 2
+          },
+          "test": {
+            "loss": 2.38763427734375,
+            "acc": 0.0625,
+            "samples": 16,
+            "batches": 2
+          }
+        }
+      ],
+      "mean_epoch_sec": 0.07095233599999062,
+      "mean_train_sec": 0.055388428000000545,
+      "mean_eval_sec": 0.015562707999990266,
+      "row_peak_memory_mb": 28.978515625,
+      "row_param_count": 69258,
+      "mean_power_w": 26.23,
+      "power_samples": 1,
+      "calibration": {
+        "row": {
+          "train_step_sec": 0.014145706999997287,
+          "eval_step_sec": 0.0033500020000047925,
+          "peak_memory_mb": 28.30419921875,
+          "param_count": 69258
+        },
+        "real_4dir": {
+          "train_step_sec": 0.04634902399999419,
+          "eval_step_sec": 0.01185180599999569,
+          "peak_memory_mb": 60.875,
+          "param_count": 275082
+        }
+      },
+      "four_to_single_train_ratio": 3.276543477113097,
+      "four_to_single_eval_ratio": 3.5378504251575777,
+      "four_peak_memory_mb": 60.875,
+      "prediction_npz": "mamba_scan_study/outputs/timing_pilot_smoke/predictions_cifar10_mamba_grid16_seed0.npz"
+    },
+    {
+      "key": "cifar10|mamba|32",
+      "dataset": "cifar10",
+      "block_type": "mamba",
+      "grid": 32,
+      "sequence_length": 1024,
+      "img_size": 32,
+      "patch_size": 1,
+      "pilot_variant": "row",
+      "seed": 0,
+      "epochs": [
+        {
+          "epoch": 1,
+          "train_sec": 0.0661354340000031,
+          "eval_sec": 0.016851008000003276,
+          "epoch_wall_sec": 0.08298774200000025,
+          "train": {
+            "loss": 2.31329345703125,
+            "acc": 0.125,
+            "samples": 16,
+            "batches": 2
+          },
+          "test": {
+            "loss": 2.1549072265625,
+            "acc": 0.125,
+            "samples": 16,
+            "batches": 2
+          }
+        }
+      ],
+      "mean_epoch_sec": 0.08298774200000025,
+      "mean_train_sec": 0.0661354340000031,
+      "mean_eval_sec": 0.016851008000003276,
+      "row_peak_memory_mb": 148.47607421875,
+      "row_param_count": 70730,
+      "mean_power_w": 26.39,
+      "power_samples": 1,
+      "calibration": {
+        "row": {
+          "train_step_sec": 0.016747709000000555,
+          "eval_step_sec": 0.0032465020000103095,
+          "peak_memory_mb": 146.84130859375,
+          "param_count": 70730
+        },
+        "real_4dir": {
+          "train_step_sec": 0.05009622600000796,
+          "eval_step_sec": 0.013631307000011361,
+          "peak_memory_mb": 263.96484375,
+          "param_count": 280970
+        }
+      },
+      "four_to_single_train_ratio": 2.9912285913259122,
+      "four_to_single_eval_ratio": 4.198767473412329,
+      "four_peak_memory_mb": 263.96484375,
+      "prediction_npz": "mamba_scan_study/outputs/timing_pilot_smoke/predictions_cifar10_mamba_grid32_seed0.npz"
+    }
+  ]
+}

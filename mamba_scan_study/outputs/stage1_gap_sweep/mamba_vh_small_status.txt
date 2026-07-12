@@ -1,0 +1,19 @@
+Mamba Stage1A small run status
+
+Initial check:
+mamba_ssm not available: ModuleNotFoundError("No module named 'mamba_ssm'")
+
+Install command attempted:
+pip install causal-conv1d mamba-ssm
+
+Install result:
+failed while installing build dependencies for causal-conv1d. pip attempted to
+download torch-2.12.1-cp313-cp313-macosx_14_0_arm64.whl from the configured
+Tsinghua PyPI mirror, but the download timed out and was incomplete
+(18.9 MB / 88.0 MB).
+
+Post-install check:
+mamba_ssm still not available: ModuleNotFoundError("No module named 'mamba_ssm'")
+
+Full install log:
+outputs/stage1_gap_sweep/mamba_install.log

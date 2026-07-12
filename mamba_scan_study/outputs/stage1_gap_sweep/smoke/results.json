@@ -1,0 +1,161 @@
+{
+  "args": {
+    "block_types": [
+      "gru",
+      "mamba"
+    ],
+    "task_dirs": [
+      "vertical"
+    ],
+    "branch_dirs": [
+      "row",
+      "col"
+    ],
+    "grid_sizes": [
+      8
+    ],
+    "signal_strengths": [
+      "single_patch"
+    ],
+    "pos_modes": [
+      "xy_learned"
+    ],
+    "seeds": [
+      0
+    ],
+    "epochs": 1,
+    "train_samples": 256,
+    "test_samples": 128,
+    "batch_size": 64,
+    "d_model": 32,
+    "n_layers": 1,
+    "patch_size": 4,
+    "amplitude": 2.5,
+    "noise_std": 1.0,
+    "lr": 0.001,
+    "weight_decay": 0.05,
+    "grad_clip": 1.0,
+    "outdir": "mamba_scan_study/outputs/stage1_gap_sweep/smoke",
+    "smoke": true
+  },
+  "has_mamba": false,
+  "stage0_config_schema": {
+    "dataset": "synthetic",
+    "data_root": "data",
+    "task_dir": "vertical",
+    "signal_strength": "single_patch",
+    "amplitude": 2.5,
+    "noise_std": 1.0,
+    "shuffle_source": false,
+    "grid_size": 8,
+    "img_size": 32,
+    "patch_size": 4,
+    "in_chans": 3,
+    "n_classes": 2,
+    "train_samples": 4096,
+    "test_samples": 1024,
+    "block_type": "gru",
+    "branch_dirs": "row",
+    "n_branches": null,
+    "bidirectional": false,
+    "d_model": 64,
+    "n_layers": 2,
+    "dropout": 0.0,
+    "shuffle_order": false,
+    "pos_mode": "seq_learned",
+    "readout_mode": "target",
+    "epochs": 5,
+    "batch_size": 128,
+    "lr": 0.001,
+    "weight_decay": 0.05,
+    "grad_clip": 1.0,
+    "num_workers": 0,
+    "seeds": [
+      0
+    ],
+    "outdir": "mamba_scan_study/outputs/stage0"
+  },
+  "rows": [
+    {
+      "block_type": "gru",
+      "task_dir": "vertical",
+      "branch_dirs": "row",
+      "grid_size": 8,
+      "signal_strength": "single_patch",
+      "pos_mode": "xy_learned",
+      "seed": 0,
+      "best_acc": 0.4140625,
+      "last_acc": 0.4140625,
+      "param_count": 8642,
+      "elapsed_sec": 0.11514806747436523,
+      "skipped": false,
+      "skip_reason": ""
+    },
+    {
+      "block_type": "gru",
+      "task_dir": "vertical",
+      "branch_dirs": "col",
+      "grid_size": 8,
+      "signal_strength": "single_patch",
+      "pos_mode": "xy_learned",
+      "seed": 0,
+      "best_acc": 0.4140625,
+      "last_acc": 0.4140625,
+      "param_count": 8642,
+      "elapsed_sec": 0.06410908699035645,
+      "skipped": false,
+      "skip_reason": ""
+    },
+    {
+      "block_type": "mamba",
+      "task_dir": "vertical",
+      "branch_dirs": "row",
+      "grid_size": 8,
+      "signal_strength": "single_patch",
+      "pos_mode": "xy_learned",
+      "seed": 0,
+      "best_acc": "",
+      "last_acc": "",
+      "param_count": "",
+      "elapsed_sec": 0.0,
+      "skipped": true,
+      "skip_reason": "mamba_ssm_not_installed"
+    },
+    {
+      "block_type": "mamba",
+      "task_dir": "vertical",
+      "branch_dirs": "col",
+      "grid_size": 8,
+      "signal_strength": "single_patch",
+      "pos_mode": "xy_learned",
+      "seed": 0,
+      "best_acc": "",
+      "last_acc": "",
+      "param_count": "",
+      "elapsed_sec": 0.0,
+      "skipped": true,
+      "skip_reason": "mamba_ssm_not_installed"
+    }
+  ],
+  "summary": [
+    {
+      "block_type": "gru",
+      "task_dir": "vertical",
+      "grid_size": 8,
+      "signal_strength": "single_patch",
+      "pos_mode": "xy_learned",
+      "gap_col_minus_row": 0.0,
+      "gap_row_minus_col": "",
+      "gap_diag_minus_row": "",
+      "gap_diag_minus_col": "",
+      "row_mean": 0.4140625,
+      "row_std": 0.0,
+      "col_mean": 0.4140625,
+      "col_std": 0.0,
+      "diag_mean": "",
+      "diag_std": "",
+      "anti_diag_mean": "",
+      "anti_diag_std": ""
+    }
+  ]
+}

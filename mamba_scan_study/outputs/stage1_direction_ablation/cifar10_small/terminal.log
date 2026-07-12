@@ -1,0 +1,31 @@
+device=cuda HAS_MAMBA=True dataset=cifar10 outdir=mamba_scan_study/outputs/stage1_direction_ablation/cifar10_small
+note=real_4dir and same_row_4 are full-branch multi-path variants, not channel-split GroupMamba
+/home/tuling/miniconda3/envs/mair/lib/python3.10/site-packages/torch/nn/modules/conv.py:459: UserWarning: Applied workaround for CuDNN issue, install nvrtc.so (Triggered internally at ../aten/src/ATen/native/cudnn/Conv_v8.cpp:80.)
+  return F.conv2d(input, weight, bias, self.stride,
+best=0.7192 dataset=cifar10 block=gru variant=row branches=row pos=xy_learned seed=0 reason=
+best=0.7152 dataset=cifar10 block=gru variant=row branches=row pos=xy_learned seed=1 reason=
+best=0.7228 dataset=cifar10 block=gru variant=row branches=row pos=xy_learned seed=2 reason=
+best=0.7174 dataset=cifar10 block=gru variant=col branches=col pos=xy_learned seed=0 reason=
+best=0.7141 dataset=cifar10 block=gru variant=col branches=col pos=xy_learned seed=1 reason=
+best=0.7181 dataset=cifar10 block=gru variant=col branches=col pos=xy_learned seed=2 reason=
+best=0.7515 dataset=cifar10 block=gru variant=real_4dir branches=row,col,diag,anti_diag pos=xy_learned seed=0 reason=
+best=0.7551 dataset=cifar10 block=gru variant=real_4dir branches=row,col,diag,anti_diag pos=xy_learned seed=1 reason=
+best=0.7501 dataset=cifar10 block=gru variant=real_4dir branches=row,col,diag,anti_diag pos=xy_learned seed=2 reason=
+best=0.7505 dataset=cifar10 block=gru variant=same_row_4 branches=row,row,row,row pos=xy_learned seed=0 reason=
+best=0.7471 dataset=cifar10 block=gru variant=same_row_4 branches=row,row,row,row pos=xy_learned seed=1 reason=
+best=0.7583 dataset=cifar10 block=gru variant=same_row_4 branches=row,row,row,row pos=xy_learned seed=2 reason=
+best=0.7594 dataset=cifar10 block=mamba variant=row branches=row pos=xy_learned seed=0 reason=
+best=0.7558 dataset=cifar10 block=mamba variant=row branches=row pos=xy_learned seed=1 reason=
+best=0.7580 dataset=cifar10 block=mamba variant=row branches=row pos=xy_learned seed=2 reason=
+best=0.7500 dataset=cifar10 block=mamba variant=col branches=col pos=xy_learned seed=0 reason=
+best=0.7475 dataset=cifar10 block=mamba variant=col branches=col pos=xy_learned seed=1 reason=
+best=0.7453 dataset=cifar10 block=mamba variant=col branches=col pos=xy_learned seed=2 reason=
+best=0.7907 dataset=cifar10 block=mamba variant=real_4dir branches=row,col,diag,anti_diag pos=xy_learned seed=0 reason=
+best=0.7863 dataset=cifar10 block=mamba variant=real_4dir branches=row,col,diag,anti_diag pos=xy_learned seed=1 reason=
+best=0.7777 dataset=cifar10 block=mamba variant=real_4dir branches=row,col,diag,anti_diag pos=xy_learned seed=2 reason=
+best=0.7816 dataset=cifar10 block=mamba variant=same_row_4 branches=row,row,row,row pos=xy_learned seed=0 reason=
+best=0.7780 dataset=cifar10 block=mamba variant=same_row_4 branches=row,row,row,row pos=xy_learned seed=1 reason=
+best=0.7758 dataset=cifar10 block=mamba variant=same_row_4 branches=row,row,row,row pos=xy_learned seed=2 reason=
+saved results: mamba_scan_study/outputs/stage1_direction_ablation/cifar10_small/results.csv
+saved summary: mamba_scan_study/outputs/stage1_direction_ablation/cifar10_small/summary.csv
+saved json   : mamba_scan_study/outputs/stage1_direction_ablation/cifar10_small/results.json

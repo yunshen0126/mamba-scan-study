@@ -1,0 +1,11 @@
+dataset,block_type,variant,branch_dirs,pos_mode,seed,best_acc,last_acc,param_count,elapsed_sec,skipped,skip_reason
+cifar10,gru,row,row,xy_learned,0,0.3269,0.3269,8906,28.039273500442505,False,
+cifar10,gru,col,col,xy_learned,0,0.3331,0.3331,8906,25.655225038528442,False,
+cifar10,gru,real_4dir,"row,col,diag,anti_diag",xy_learned,0,0.3449,0.3449,34634,28.236939668655396,False,
+cifar10,gru,same_row_4,"row,row,row,row",xy_learned,0,0.3439,0.3439,34634,29.855542421340942,False,
+cifar10,gru,bidir_row,,xy_learned,0,,,,0.0,True,reverse_scan_not_implemented
+cifar10,mamba,row,row,xy_learned,0,0.3394,0.3394,12490,26.197994709014893,False,
+cifar10,mamba,col,col,xy_learned,0,0.3288,0.3288,12490,24.621101140975952,False,
+cifar10,mamba,real_4dir,"row,col,diag,anti_diag",xy_learned,0,0.356,0.356,48970,29.134679079055786,False,
+cifar10,mamba,same_row_4,"row,row,row,row",xy_learned,0,0.3689,0.3689,48970,32.6959125995636,False,
+cifar10,mamba,bidir_row,,xy_learned,0,,,,0.0,True,reverse_scan_not_implemented
