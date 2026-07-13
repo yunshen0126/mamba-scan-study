@@ -5,3 +5,4 @@ datasets/
 *.pt
 *.npz
 logs/
+mamba_scan_study/outputs/
