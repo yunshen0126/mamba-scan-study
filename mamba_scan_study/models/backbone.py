@@ -320,6 +320,7 @@ class ChannelSplitBackbone(nn.Module):
     VARIANTS = {
         "channel_real_4dir": ("row", "col", "diag", "anti_diag"),
         "channel_same_row_4": ("row", "row", "row", "row"),
+        "channel_same_perm_4": ("row", "row", "row", "row"),
         "channel_rand_perm_4": ("row", "row", "row", "row"),
     }
 
@@ -398,8 +399,13 @@ class ChannelSplitBackbone(nn.Module):
         generator = torch.Generator().manual_seed(self.shuffle_seed)
         permutations = []
         inverses = []
+        shared_permutation = None
         for group in range(4):
-            if variant == "channel_rand_perm_4":
+            if variant == "channel_same_perm_4":
+                if shared_permutation is None:
+                    shared_permutation = torch.randperm(self.L, generator=generator)
+                permutation = shared_permutation.clone()
+            elif variant == "channel_rand_perm_4":
                 permutation = torch.randperm(self.L, generator=generator)
             else:
                 permutation = torch.arange(self.L)

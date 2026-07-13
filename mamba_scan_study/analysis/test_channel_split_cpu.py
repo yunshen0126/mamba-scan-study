@@ -17,7 +17,12 @@ def main():
         n_classes=10,
         pos_mode="xy_learned",
     )
-    variants = ("channel_real_4dir", "channel_same_row_4", "channel_rand_perm_4")
+    variants = (
+        "channel_real_4dir",
+        "channel_same_row_4",
+        "channel_same_perm_4",
+        "channel_rand_perm_4",
+    )
     models = []
     for name in variants:
         torch.manual_seed(1234)
@@ -44,7 +49,8 @@ def main():
         for other in models[1:]:
             assert torch.equal(first, dict(other.named_parameters())[name]), name
 
-    permutations = models[2].channel_permutations
+    same_permutations = models[2].channel_permutations
+    permutations = models[3].channel_permutations
     assert any(
         not torch.equal(permutation, torch.arange(models[2].L))
         for permutation in permutations
@@ -57,6 +63,9 @@ def main():
     for i in range(4):
         for j in range(i + 1, 4):
             assert not torch.equal(permutations[i], permutations[j])
+    assert all(torch.equal(same_permutations[0], item) for item in same_permutations[1:])
+    assert not torch.equal(same_permutations[0], torch.arange(models[2].L))
+    assert torch.equal(same_permutations[0], permutations[0])
 
     x = torch.randn(2, 3, 32, 32, device=device)
     for model in models:
@@ -64,11 +73,11 @@ def main():
         assert logits.shape == (2, 10)
         assert features.shape == (2, 8, 8, 64)
     outputs = [model(x)[0] for model in models]
-    assert not torch.equal(outputs[0], outputs[1])
-    assert not torch.equal(outputs[0], outputs[2])
-    assert not torch.equal(outputs[1], outputs[2])
+    for i in range(len(outputs)):
+        for j in range(i + 1, len(outputs)):
+            assert not torch.equal(outputs[i], outputs[j])
 
-    print("PASS: parameter tensor shapes/counts identical across 3 variants")
+    print("PASS: parameter tensor shapes/counts identical across 4 variants")
     print(
         f"PASS: params channel_split={channel_params:,}; "
         f"full_branch_real4={full_params:,}; ratio={channel_params / full_params:.4f}"
@@ -77,8 +86,9 @@ def main():
     print("PASS: same-seed parameter initialization identical across variants")
     print("PASS: random permutations non-identity and reproducible from local seed")
     print("PASS: random permutations are pairwise distinct")
-    print("PASS: logits differ across real_4dir, same_row_4, and rand_perm variants")
-    print("PASS: all 3 channel variants CPU forward shapes valid")
+    print("PASS: same_perm uses one shared non-identity permutation equal to rand_perm group 0")
+    print("PASS: logits differ across all 4 channel variants")
+    print("PASS: all 4 channel variants CPU forward shapes valid")
 
 
 if __name__ == "__main__":

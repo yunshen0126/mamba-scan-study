@@ -26,6 +26,7 @@ VARIANTS = {
 CHANNEL_VARIANTS = (
     "channel_real_4dir",
     "channel_same_row_4",
+    "channel_same_perm_4",
     "channel_rand_perm_4",
 )
 BLOCKS = ("gru", "mamba")
@@ -313,7 +314,10 @@ def run_one(cfg, block_type, grid, variant, micro_batch, device):
     permutation = None
     if cfg.arch == "full_branch" and variant == "shuffle_row":
         permutation = model.branches[0].shuffle_perm.detach().cpu().tolist()
-    elif cfg.arch == "channel_split" and variant == "channel_rand_perm_4":
+    elif cfg.arch == "channel_split" and variant in (
+        "channel_same_perm_4",
+        "channel_rand_perm_4",
+    ):
         permutation = model.channel_permutations.detach().cpu().tolist()
     branch_dirs = (
         VARIANTS[variant]["branch_dirs"]
@@ -321,7 +325,7 @@ def run_one(cfg, block_type, grid, variant, micro_batch, device):
         else ",".join(model.branch_dirs)
     )
     run_shuffle_seed = None
-    if variant in ("shuffle_row", "channel_rand_perm_4"):
+    if variant in ("shuffle_row", "channel_same_perm_4", "channel_rand_perm_4"):
         run_shuffle_seed = cfg.shuffle_seed + grid
     result = {
         "key": run_key(cfg.dataset, cfg.arch, cfg.d_model, block_type, grid, variant),
@@ -338,7 +342,8 @@ def run_one(cfg, block_type, grid, variant, micro_batch, device):
         "micro_batch": micro_batch,
         "accum_steps": accum_steps,
         "effective_batch": cfg.effective_batch,
-        "shuffle_order": variant in ("shuffle_row", "channel_rand_perm_4"),
+        "shuffle_order": variant
+        in ("shuffle_row", "channel_same_perm_4", "channel_rand_perm_4"),
         "shuffle_seed": run_shuffle_seed,
         "shuffle_perm": permutation,
         "param_count": sum(parameter.numel() for parameter in model.parameters()),
@@ -582,7 +587,7 @@ def save_all(cfg, results, final=False):
                 "variant": variant,
                 "seed": cfg.seed,
                 "shuffle_seed": cfg.shuffle_seed + grid
-                if variant in ("shuffle_row", "channel_rand_perm_4")
+                if variant in ("shuffle_row", "channel_same_perm_4", "channel_rand_perm_4")
                 else None,
             }
             for block, grid, variant in matrix_order(cfg.dataset, cfg.arch)
@@ -658,8 +663,8 @@ def main():
     expected_runs = {
         ("cifar10", "full_branch"): 30,
         ("cifar10_up64", "full_branch"): 8,
-        ("cifar10", "channel_split"): 18,
-        ("cifar10_up64", "channel_split"): 6,
+        ("cifar10", "channel_split"): 24,
+        ("cifar10_up64", "channel_split"): 8,
     }[(cfg.dataset, cfg.arch)]
     if len(work) != expected_runs:
         raise RuntimeError(f"Stage 1 matrix must contain exactly {expected_runs} runs")

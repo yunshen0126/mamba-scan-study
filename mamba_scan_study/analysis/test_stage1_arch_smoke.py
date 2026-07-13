@@ -79,7 +79,7 @@ def main():
     assert {grid: 32 // grid for grid in (8, 16, 32)} == {8: 4, 16: 2, 32: 1}
 
     channel_matrix = matrix_order("cifar10", "channel_split")
-    assert len(channel_matrix) == 18
+    assert len(channel_matrix) == 24
     assert {variant for _block, _grid, variant in channel_matrix} == set(CHANNEL_VARIANTS)
 
     keys = {
@@ -110,7 +110,7 @@ def main():
 
     print("PASS: full_branch d_model=64 matrix is the original ordered 30-run matrix")
     print("PASS: patch mapping is grid8=4, grid16=2, grid32=1")
-    print("PASS: channel_split matrix contains 18 runs and exactly 3 variants per cell")
+    print("PASS: channel_split matrix contains 24 runs and exactly 4 variants per cell")
     print("PASS: resume keys distinguish arch and d_model")
     print("PASS: 2-step smoke covered arch={full_branch,channel_split}, d_model={64,256}, block={gru,mamba}, grid={8,32}")
     for row in rows:
