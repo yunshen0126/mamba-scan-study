@@ -54,12 +54,19 @@ def main():
         variant="channel_rand_perm_4", shuffle_seed=77, **kwargs
     ).channel_permutations
     assert torch.equal(permutations, repeat)
+    for i in range(4):
+        for j in range(i + 1, 4):
+            assert not torch.equal(permutations[i], permutations[j])
 
     x = torch.randn(2, 3, 32, 32, device=device)
     for model in models:
         logits, features = model(x)
         assert logits.shape == (2, 10)
         assert features.shape == (2, 8, 8, 64)
+    outputs = [model(x)[0] for model in models]
+    assert not torch.equal(outputs[0], outputs[1])
+    assert not torch.equal(outputs[0], outputs[2])
+    assert not torch.equal(outputs[1], outputs[2])
 
     checkpoint = torch.load(
         "mamba_scan_study/outputs/stage1_seed0/checkpoints/gru_real_4dir_grid8_seed0.pt",
@@ -102,6 +109,8 @@ def main():
     print("PASS: flatten/restore reversible and spatially aligned for 4 scan directions")
     print("PASS: same-seed parameter initialization identical across variants")
     print("PASS: random permutations non-identity and reproducible from local seed")
+    print("PASS: random permutations are pairwise distinct")
+    print("PASS: logits differ across real_4dir, same_row_4, and rand_perm variants")
     print("PASS: all 3 channel variants CPU forward shapes valid")
     print("PASS: existing MultiDirBackbone checkpoint loads and CPU outputs are deterministic")
 

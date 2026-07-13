@@ -359,6 +359,9 @@ class ChannelSplitBackbone(nn.Module):
         self.pos_mode = pos_mode
         self.branch_dirs = self.VARIANTS[variant]
         self.patch_embed = nn.Conv2d(in_chans, d_model, patch_size, stride=patch_size)
+        self.mask_tokens = nn.ParameterList(
+            [nn.Parameter(torch.zeros(self.group_width)) for _ in range(4)]
+        )
 
         row_pos = []
         col_pos = []
@@ -449,7 +452,8 @@ class ChannelSplitBackbone(nn.Module):
                 if mask is not None:
                     mask = mask.index_select(1, permutation)
             if mask is not None:
-                tokens = torch.where(mask.unsqueeze(-1), torch.zeros_like(tokens), tokens)
+                mask_token = self.mask_tokens[group].view(1, 1, -1)
+                tokens = torch.where(mask.unsqueeze(-1), mask_token, tokens)
             if position is not None:
                 tokens = tokens + position
             for block in blocks:
