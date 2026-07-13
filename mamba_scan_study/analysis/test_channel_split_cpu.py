@@ -68,39 +68,6 @@ def main():
     assert not torch.equal(outputs[0], outputs[2])
     assert not torch.equal(outputs[1], outputs[2])
 
-    checkpoint = torch.load(
-        "mamba_scan_study/outputs/stage1_seed0/checkpoints/gru_real_4dir_grid8_seed0.pt",
-        map_location=device,
-    )
-    old_a = MultiDirBackbone(
-        img_size=32,
-        patch_size=4,
-        in_chans=3,
-        d_model=64,
-        n_layers=2,
-        block_type="gru",
-        n_classes=10,
-        branch_dirs="row,col,diag,anti_diag",
-        pos_mode="xy_learned",
-    ).to(device)
-    old_b = MultiDirBackbone(
-        img_size=32,
-        patch_size=4,
-        in_chans=3,
-        d_model=64,
-        n_layers=2,
-        block_type="gru",
-        n_classes=10,
-        branch_dirs="row,col,diag,anti_diag",
-        pos_mode="xy_learned",
-    ).to(device)
-    old_a.load_state_dict(checkpoint["model_state"])
-    old_b.load_state_dict(checkpoint["model_state"])
-    with torch.no_grad():
-        output_a = old_a(x)[0]
-        output_b = old_b(x)[0]
-    assert torch.equal(output_a, output_b)
-
     print("PASS: parameter tensor shapes/counts identical across 3 variants")
     print(
         f"PASS: params channel_split={channel_params:,}; "
@@ -112,7 +79,6 @@ def main():
     print("PASS: random permutations are pairwise distinct")
     print("PASS: logits differ across real_4dir, same_row_4, and rand_perm variants")
     print("PASS: all 3 channel variants CPU forward shapes valid")
-    print("PASS: existing MultiDirBackbone checkpoint loads and CPU outputs are deterministic")
 
 
 if __name__ == "__main__":

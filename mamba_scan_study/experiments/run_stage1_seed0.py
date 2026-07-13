@@ -13,7 +13,7 @@ import torch
 import torch.nn.functional as F
 
 from mamba_scan_study.data.real_datasets import build_real_loaders
-from mamba_scan_study.models.backbone import HAS_MAMBA, MultiDirBackbone
+from mamba_scan_study.models.backbone import ChannelSplitBackbone, HAS_MAMBA, MultiDirBackbone
 
 
 VARIANTS = {
@@ -23,6 +23,11 @@ VARIANTS = {
     "same_row_4": {"branch_dirs": "row,row,row,row", "shuffle_order": False},
     "shuffle_row": {"branch_dirs": "row", "shuffle_order": True},
 }
+CHANNEL_VARIANTS = (
+    "channel_real_4dir",
+    "channel_same_row_4",
+    "channel_rand_perm_4",
+)
 BLOCKS = ("gru", "mamba")
 GRIDS = (8, 16, 32)
 
@@ -31,6 +36,8 @@ GRIDS = (8, 16, 32)
 class Config:
     dataset: str
     img_size: int
+    arch: str
+    shuffle_seed: int
     data_root: str
     outdir: str
     microbatch_csv: str
@@ -55,6 +62,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Exact Stage 1 seed-0 CIFAR-10 sweep.")
     parser.add_argument("--dataset", default="cifar10", choices=["cifar10", "cifar10_up64"])
     parser.add_argument("--img-size", type=int, default=32)
+    parser.add_argument("--arch", default="full_branch", choices=["full_branch", "channel_split"])
     parser.add_argument("--data-root", default="data")
     parser.add_argument("--outdir", default="mamba_scan_study/outputs/stage1_seed0")
     parser.add_argument(
@@ -115,6 +123,19 @@ def shuffle_seed(seed, grid):
 
 
 def make_model(cfg, block_type, grid, variant, device):
+    if cfg.arch == "channel_split":
+        return ChannelSplitBackbone(
+            img_size=cfg.img_size,
+            patch_size=cfg.img_size // grid,
+            in_chans=3,
+            d_model=cfg.d_model,
+            n_layers=cfg.n_layers,
+            block_type=block_type,
+            n_classes=10,
+            variant=variant,
+            shuffle_seed=cfg.shuffle_seed + grid,
+            pos_mode=cfg.pos_mode,
+        ).to(device)
     spec = VARIANTS[variant]
     return MultiDirBackbone(
         img_size=cfg.img_size,
@@ -126,7 +147,7 @@ def make_model(cfg, block_type, grid, variant, device):
         n_classes=10,
         branch_dirs=spec["branch_dirs"],
         shuffle_order=spec["shuffle_order"],
-        shuffle_seed=shuffle_seed(cfg.seed, grid) if spec["shuffle_order"] else None,
+        shuffle_seed=cfg.shuffle_seed + grid if spec["shuffle_order"] else None,
         pos_mode=cfg.pos_mode,
     ).to(device)
 
@@ -202,8 +223,15 @@ def evaluate(model, loader, cfg, device, collect=False):
     }
 
 
-def run_key(dataset, block_type, grid, variant):
-    return f"{dataset}|{block_type}|{grid}|{variant}"
+def run_key(dataset, arch, d_model, block_type, grid, variant):
+    return f"{dataset}|{arch}|d{d_model}|{block_type}|{grid}|{variant}"
+
+
+def artifact_stem(cfg, block_type, grid, variant):
+    stem = f"{block_type}_{variant}_grid{grid}_seed{cfg.seed}"
+    if cfg.arch != "full_branch" or cfg.d_model != 64:
+        stem = f"{cfg.arch}_d{cfg.d_model}_{stem}"
+    return stem
 
 
 def run_one(cfg, block_type, grid, variant, micro_batch, device):
@@ -220,9 +248,7 @@ def run_one(cfg, block_type, grid, variant, micro_batch, device):
     arrays = None
     progress_dir = os.path.join(cfg.outdir, "progress")
     os.makedirs(progress_dir, exist_ok=True)
-    progress_path = os.path.join(
-        progress_dir, f"{block_type}_{variant}_grid{grid}_seed{cfg.seed}.json"
-    )
+    progress_path = os.path.join(progress_dir, f"{artifact_stem(cfg, block_type, grid, variant)}.json")
     torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats(device)
     run_start = time.perf_counter()
@@ -263,6 +289,9 @@ def run_one(cfg, block_type, grid, variant, micro_batch, device):
             json.dump(
                 {
                     "status": "running",
+                    "dataset": cfg.dataset,
+                    "arch": cfg.arch,
+                    "d_model": cfg.d_model,
                     "block_type": block_type,
                     "grid": grid,
                     "variant": variant,
@@ -282,14 +311,26 @@ def run_one(cfg, block_type, grid, variant, micro_batch, device):
             flush=True,
         )
     permutation = None
-    if variant == "shuffle_row":
+    if cfg.arch == "full_branch" and variant == "shuffle_row":
         permutation = model.branches[0].shuffle_perm.detach().cpu().tolist()
+    elif cfg.arch == "channel_split" and variant == "channel_rand_perm_4":
+        permutation = model.channel_permutations.detach().cpu().tolist()
+    branch_dirs = (
+        VARIANTS[variant]["branch_dirs"]
+        if cfg.arch == "full_branch"
+        else ",".join(model.branch_dirs)
+    )
+    run_shuffle_seed = None
+    if variant in ("shuffle_row", "channel_rand_perm_4"):
+        run_shuffle_seed = cfg.shuffle_seed + grid
     result = {
-        "key": run_key(cfg.dataset, block_type, grid, variant),
+        "key": run_key(cfg.dataset, cfg.arch, cfg.d_model, block_type, grid, variant),
         "dataset": cfg.dataset,
+        "arch": cfg.arch,
+        "d_model": cfg.d_model,
         "block_type": block_type,
         "variant": variant,
-        "branch_dirs": VARIANTS[variant]["branch_dirs"],
+        "branch_dirs": branch_dirs,
         "grid": grid,
         "sequence_length": grid * grid,
         "patch_size": cfg.img_size // grid,
@@ -297,8 +338,8 @@ def run_one(cfg, block_type, grid, variant, micro_batch, device):
         "micro_batch": micro_batch,
         "accum_steps": accum_steps,
         "effective_batch": cfg.effective_batch,
-        "shuffle_order": VARIANTS[variant]["shuffle_order"],
-        "shuffle_seed": shuffle_seed(cfg.seed, grid) if variant == "shuffle_row" else None,
+        "shuffle_order": variant in ("shuffle_row", "channel_rand_perm_4"),
+        "shuffle_seed": run_shuffle_seed,
         "shuffle_perm": permutation,
         "param_count": sum(parameter.numel() for parameter in model.parameters()),
         "peak_allocated_mb": torch.cuda.max_memory_allocated(device) / (1024**2),
@@ -319,7 +360,15 @@ def run_one(cfg, block_type, grid, variant, micro_batch, device):
     return result, arrays, checkpoint
 
 
-def matrix_order(dataset="cifar10"):
+def matrix_order(dataset="cifar10", arch="full_branch"):
+    if arch == "channel_split":
+        grids = (32,) if dataset == "cifar10_up64" else GRIDS
+        return [
+            (block_type, grid, variant)
+            for block_type in BLOCKS
+            for grid in grids
+            for variant in CHANNEL_VARIANTS
+        ]
     if dataset == "cifar10_up64":
         variants = ("row", "shuffle_row", "same_row_4", "real_4dir")
         return [(block_type, 32, variant) for block_type in BLOCKS for variant in variants]
@@ -344,13 +393,16 @@ def grouped_results(results):
     }
 
 
-def paired_rows(results):
+def paired_rows(results, arch):
     grouped = grouped_results(results)
+    variant_names = tuple(VARIANTS) if arch == "full_branch" else CHANNEL_VARIANTS
+    real_name = "real_4dir" if arch == "full_branch" else "channel_real_4dir"
+    same_name = "same_row_4" if arch == "full_branch" else "channel_same_row_4"
     rows = []
     for block_type in BLOCKS:
         for grid in GRIDS:
             variants = {
-                variant: grouped.get((block_type, grid, variant)) for variant in VARIANTS
+                variant: grouped.get((block_type, grid, variant)) for variant in variant_names
             }
             available = [result for result in variants.values() if result is not None]
             if not available:
@@ -364,17 +416,17 @@ def paired_rows(results):
                     for variant, result in variants.items()
                 }
                 delta = None
-                if accuracies["real_4dir"] is not None and accuracies["same_row_4"] is not None:
-                    delta = accuracies["real_4dir"] - accuracies["same_row_4"]
+                if accuracies[real_name] is not None and accuracies[same_name] is not None:
+                    delta = accuracies[real_name] - accuracies[same_name]
                 order = None
-                if accuracies["row"] is not None and accuracies["shuffle_row"] is not None:
+                if arch == "full_branch" and accuracies["row"] is not None and accuracies["shuffle_row"] is not None:
                     order = accuracies["row"] - accuracies["shuffle_row"]
                 rows.append(
                     {
                         "block_type": block_type,
                         "grid": grid,
                         "epoch": epoch_index + 1,
-                        **{f"acc_{variant}": accuracies[variant] for variant in VARIANTS},
+                        **{f"acc_{variant}": accuracies[variant] for variant in variant_names},
                         "delta_direction": delta,
                         "order_utilization": order,
                     }
@@ -414,6 +466,8 @@ def tail_summary(paired):
 
 
 def consistency_check(results, cfg):
+    if cfg.arch != "full_branch":
+        return {"status": "not_applicable"}
     grouped = grouped_results(results)
     real = grouped.get(("mamba", 8, "real_4dir"))
     same = grouped.get(("mamba", 8, "same_row_4"))
@@ -463,6 +517,8 @@ def history_rows(results):
         for epoch in result["history"]:
             rows.append(
                 {
+                    "arch": result.get("arch", "full_branch"),
+                    "d_model": result.get("d_model", 64),
                     "block_type": result["block_type"],
                     "grid": result["grid"],
                     "variant": result["variant"],
@@ -505,7 +561,7 @@ def plot_metrics(path, paired):
 
 def save_all(cfg, results, final=False):
     os.makedirs(cfg.outdir, exist_ok=True)
-    paired = paired_rows(results)
+    paired = paired_rows(results, cfg.arch)
     summary = tail_summary(paired)
     consistency = consistency_check(results, cfg)
     payload = {
@@ -517,8 +573,19 @@ def save_all(cfg, results, final=False):
             "mamba_fast_path": False,
         },
         "matrix": [
-            {"block_type": block, "grid": grid, "variant": variant, "seed": cfg.seed}
-            for block, grid, variant in matrix_order(cfg.dataset)
+            {
+                "dataset": cfg.dataset,
+                "arch": cfg.arch,
+                "d_model": cfg.d_model,
+                "block_type": block,
+                "grid": grid,
+                "variant": variant,
+                "seed": cfg.seed,
+                "shuffle_seed": cfg.shuffle_seed + grid
+                if variant in ("shuffle_row", "channel_rand_perm_4")
+                else None,
+            }
+            for block, grid, variant in matrix_order(cfg.dataset, cfg.arch)
         ],
         "consistency_check": consistency,
         "results": results,
@@ -548,6 +615,8 @@ def main():
     cfg = Config(
         dataset=args.dataset,
         img_size=args.img_size,
+        arch=args.arch,
+        shuffle_seed=shuffle_seed(args.seed, 0),
         data_root=args.data_root,
         outdir=args.outdir,
         microbatch_csv=args.microbatch_csv,
@@ -572,7 +641,7 @@ def main():
     expected_img_size = {"cifar10": 32, "cifar10_up64": 64}[cfg.dataset]
     if cfg.img_size != expected_img_size:
         raise ValueError(f"dataset={cfg.dataset} requires img_size={expected_img_size}")
-    for grid in {item[1] for item in matrix_order(cfg.dataset)}:
+    for grid in {item[1] for item in matrix_order(cfg.dataset, cfg.arch)}:
         if cfg.img_size % grid:
             raise ValueError(f"img_size={cfg.img_size} is not divisible by grid={grid}")
     if not args.smoke and (cfg.epochs != 100 or cfg.warmup_epochs != 5):
@@ -585,8 +654,13 @@ def main():
     for value in microbatches.values():
         if cfg.effective_batch % value:
             raise ValueError("Selected micro-batch must divide effective batch")
-    work = matrix_order(cfg.dataset)
-    expected_runs = 30 if cfg.dataset == "cifar10" else 8
+    work = matrix_order(cfg.dataset, cfg.arch)
+    expected_runs = {
+        ("cifar10", "full_branch"): 30,
+        ("cifar10_up64", "full_branch"): 8,
+        ("cifar10", "channel_split"): 18,
+        ("cifar10_up64", "channel_split"): 6,
+    }[(cfg.dataset, cfg.arch)]
     if len(work) != expected_runs:
         raise RuntimeError(f"Stage 1 matrix must contain exactly {expected_runs} runs")
 
@@ -595,7 +669,14 @@ def main():
     os.makedirs(os.path.join(cfg.outdir, "checkpoints"), exist_ok=True)
     results = [] if args.no_resume else load_results(cfg)
     completed = {
-        run_key(row.get("dataset", "cifar10"), row["block_type"], row["grid"], row["variant"])
+        run_key(
+            row.get("dataset", "cifar10"),
+            row.get("arch", "full_branch"),
+            row.get("d_model", 64),
+            row["block_type"],
+            row["grid"],
+            row["variant"],
+        )
         for row in results
     }
     gate = consistency_check(results, cfg)
@@ -604,7 +685,7 @@ def main():
 
     device = torch.device("cuda")
     for block_type, grid, variant in work:
-        key = run_key(cfg.dataset, block_type, grid, variant)
+        key = run_key(cfg.dataset, cfg.arch, cfg.d_model, block_type, grid, variant)
         if key in completed:
             print(f"RESUME skip {key}", flush=True)
             continue
@@ -616,7 +697,7 @@ def main():
         result, arrays, checkpoint = run_one(
             cfg, block_type, grid, variant, micro_batch, device
         )
-        stem = f"{block_type}_{variant}_grid{grid}_seed{cfg.seed}"
+        stem = artifact_stem(cfg, block_type, grid, variant)
         prediction_path = os.path.join(cfg.outdir, "predictions", f"{stem}.npz")
         checkpoint_path = os.path.join(cfg.outdir, "checkpoints", f"{stem}.pt")
         np.savez_compressed(prediction_path, **arrays)
@@ -628,7 +709,13 @@ def main():
         save_all(cfg, results)
         print(f"DONE {key}", flush=True)
 
-        if not args.smoke and block_type == "mamba" and grid == 8 and variant == "real_4dir":
+        if (
+            cfg.arch == "full_branch"
+            and not args.smoke
+            and block_type == "mamba"
+            and grid == 8
+            and variant == "real_4dir"
+        ):
             gate = consistency_check(results, cfg)
             print(f"CONSISTENCY {json.dumps(gate)}", flush=True)
             if gate["status"] != "pass":
