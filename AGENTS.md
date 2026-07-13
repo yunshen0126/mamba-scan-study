@@ -127,3 +127,24 @@ Windows: `Start-Process -NoNewWindow -RedirectStandardOutput`
   当前走 unfused 慢路径。WSL 无 nvcc,**不要在本地折腾编译**。
   若在干净 CUDA 环境(云 GPU)运行,可花 20 分钟试一次 fast path。
 - 云端:AutoDL
+
+## 7. 版本控制
+- 每次修改代码前先 git add -A && git commit,确保有干净回退点
+- 改完跑 git diff --stat 汇报改动范围
+- **训练进程运行期间严禁任何 git 写操作**(checkout/reset/stash/clean)。
+  outputs/ 在训练时被持续写入,git 写操作会破坏它。
+  训练期间只允许 git status / git diff 只读查看。
+
+## 8. 对照实验的设计检查
+提出任何"控制变量"对照前,必须先做两件事:
+1. 显式论证被控制的变量真的被控制住了,并指定一个 manipulation check 指标
+2. 检查该对照是否与已有条件数学等价(避免同义反复)
+教训一:双线性上采样被误认为不改变信息覆盖,实际插值把邻居信息
+        混进了每个 patch,导致对照失效。
+教训二:NN 上采样 2x + 2x2 卷积,与原图 + 1x1 卷积是同一个函数
+        (卷积核作用在同一像素的四份拷贝上 = 权重求和的 1x1 卷积)。
+        此类对照跑了等于没跑。
+
+## 9. outputs 不进 git
+outputs/ 是数据不是代码,训练时被持续写入。
+执行:git rm -r --cached mamba_scan_study/outputs/ 并加入 .gitignore
