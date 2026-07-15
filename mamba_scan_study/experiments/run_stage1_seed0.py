@@ -641,8 +641,7 @@ def main():
         consistency_tolerance=0.0064,
         consistency_min_positive=0.001,
     )
-    if cfg.seed != 0:
-        raise ValueError("Stage 1 is restricted to seed 0; seeds 1-4 are not authorized")
+    # seed guard lifted 2026-07-14: batch A (seeds 0-4) authorized
     expected_img_size = {"cifar10": 32, "cifar10_up64": 64}[cfg.dataset]
     if cfg.img_size != expected_img_size:
         raise ValueError(f"dataset={cfg.dataset} requires img_size={expected_img_size}")
