@@ -1,6 +1,6 @@
 # 03 — 证据台账
 
-**版本:** 2026-07-13(第三次重写)
+**版本:** 2026-07-16(第四次:追加 §8b/§8c)
 **用途:** 记录每一条证据、它的强度、以及**三次已发生的推翻**。
 **规则:** 反例与负结果与正结果同等保存。任何被推翻的结论保留在此,不删除。
 
@@ -217,6 +217,51 @@ NN 上采样 2× 后,每个 2×2 patch 内是**同一像素的四份拷贝**。
 > 提出任何对照前,先检查它是否与已有条件数学等价。同义反复的对照跑了等于没跑。
 
 ---
+
+## 8b. 【PILOT / 待复验】channel-split GRU 三分量析因(d=64 seed0,2026-07-16)
+
+**数据:** csplit_d64_seed0,GRU 三档(grid8/16/32)四变体各 100ep 完整;
+mamba 侧仅 grid8 两变体(real/same_row),不完整。尾窗 80–100 train_acc。
+
+**三个随负载单调的信号(GRU、单 seed、d=64 欠拟合档):**
+
+| gru grid | structure(结构−乱序) | diversity(多样−单一) | interaction(几何多样−乱序多样) |
+|---|---|---|---|
+| 8  | +0.040 | −0.006 | −0.015 |
+| 16 | +0.061 | −0.001 | +0.003 |
+| 32 | **+0.094** | **+0.014** | **+0.024** |
+
+- structure 随负载单调放大(+0.040→+0.094)—— 对应 shuffle 塌陷、ZigMa/Flatten
+- diversity 从 0 苏醒(grid32 首次转正 +0.014)—— "负载门控多样性"的直接信号
+- interaction 张开,几乎全来自 within-structured(grid32:几何多样 +0.025 vs
+  乱序多样 +0.002)—— 高负载下多样性红利依赖"几何",不是任意多样
+
+**定位:pilot 证据,不进正文结论。** 三条限制:
+1. 全档 train_acc 62–72%,仍欠拟合;效应绝对值待 **d=256** 复验(欠拟合可能低估 diversity)
+2. 单 seed 无 CI;grid8/16 的 diversity 在噪声内,grid32 +0.014 待 **5-seed** 定 CI 下界
+3. 这是 **GRU**;mamba 侧仅 grid8 两变体,mamba 曲线待批次 C 补齐
+
+**批次 C 预注册判据(现在定死,防事后挑数):**
+- diversity 主效应 5-seed CI 下界 > 0 → "多样性红利真实存在"
+- interaction CI 下界 > 0 → "几何性有独立价值"
+- structure 三档点估计单调 → "结构性收益随负载放大"
+
+**与旧结论的关系:** §3 的"容量占大头、方向仅 1/4"仍成立,但那是**低负载判别域**
+(grid8)的结论。本 pilot 把 delta 解剖成三分量,并显示高负载(grid32)下 diversity
+与 geometry 开始苏醒 —— 这不是推翻 §3,是把单因素"扫描负载"升级为
+"三分量 × 因果结构"的两因素账,§3 收进新框架的低负载边界内。
+
+## 8c. 【教训】channel-split 不能用主实验的 delta 汇总口径
+
+`tail_80_100_summary.csv` 由主实验(cloud_seed)脚本生成,按 block×grid 算
+delta_direction。**套到 channel-split 输出上是错的** —— 它算出的"mamba grid8 +0.0013"
+是脚本乱套的产物,与主实验 +0.58pp 不可比。channel-split 要的是四变体两两析因
+(structure/diversity/interaction),不是 row-vs-col 的 delta。
+**channel-split 一律用 `mamba_scan_study/analysis/analyze_csplit_factorial.py`,
+勿信 summary CSV 里的数字。**
+
+**教训(建议写入 AGENTS.md):** 复用汇总脚本前,先确认它的分组维度与新实验的
+自变量匹配。channel-split 的自变量是 variant,不是 block×grid。
 
 ## 9. 【未完成】待补证据
 
