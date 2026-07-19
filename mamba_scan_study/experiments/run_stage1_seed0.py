@@ -31,6 +31,7 @@ CHANNEL_VARIANTS = (
 )
 BLOCKS = ("gru", "mamba")
 GRIDS = (8, 16, 32)
+DATASET_NUM_CLASSES = {"cifar10": 10, "cifar10_up64": 10, "cifar100": 100}
 
 
 @dataclass
@@ -61,7 +62,9 @@ class Config:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Exact Stage 1 seed-0 CIFAR-10 sweep.")
-    parser.add_argument("--dataset", default="cifar10", choices=["cifar10", "cifar10_up64"])
+    parser.add_argument(
+        "--dataset", default="cifar10", choices=["cifar10", "cifar10_up64", "cifar100"]
+    )
     parser.add_argument("--img-size", type=int, default=32)
     parser.add_argument("--arch", default="full_branch", choices=["full_branch", "channel_split"])
     parser.add_argument("--data-root", default="data")
@@ -123,6 +126,13 @@ def shuffle_seed(seed, grid):
     return 1_000_000 + seed * 10_000 + grid
 
 
+def dataset_num_classes(dataset):
+    try:
+        return DATASET_NUM_CLASSES[dataset]
+    except KeyError as error:
+        raise ValueError(f"unsupported dataset={dataset!r}") from error
+
+
 def make_model(cfg, block_type, grid, variant, device):
     if cfg.arch == "channel_split":
         return ChannelSplitBackbone(
@@ -132,7 +142,7 @@ def make_model(cfg, block_type, grid, variant, device):
             d_model=cfg.d_model,
             n_layers=cfg.n_layers,
             block_type=block_type,
-            n_classes=10,
+            n_classes=dataset_num_classes(cfg.dataset),
             variant=variant,
             shuffle_seed=cfg.shuffle_seed + grid,
             pos_mode=cfg.pos_mode,
@@ -145,7 +155,7 @@ def make_model(cfg, block_type, grid, variant, device):
         d_model=cfg.d_model,
         n_layers=cfg.n_layers,
         block_type=block_type,
-        n_classes=10,
+        n_classes=dataset_num_classes(cfg.dataset),
         branch_dirs=spec["branch_dirs"],
         shuffle_order=spec["shuffle_order"],
         shuffle_seed=cfg.shuffle_seed + grid if spec["shuffle_order"] else None,
@@ -642,7 +652,7 @@ def main():
         consistency_min_positive=0.001,
     )
     # seed guard lifted 2026-07-14: batch A (seeds 0-4) authorized
-    expected_img_size = {"cifar10": 32, "cifar10_up64": 64}[cfg.dataset]
+    expected_img_size = {"cifar10": 32, "cifar10_up64": 64, "cifar100": 32}[cfg.dataset]
     if cfg.img_size != expected_img_size:
         raise ValueError(f"dataset={cfg.dataset} requires img_size={expected_img_size}")
     for grid in {item[1] for item in matrix_order(cfg.dataset, cfg.arch)}:
@@ -662,8 +672,10 @@ def main():
     expected_runs = {
         ("cifar10", "full_branch"): 30,
         ("cifar10_up64", "full_branch"): 8,
+        ("cifar100", "full_branch"): 30,
         ("cifar10", "channel_split"): 24,
         ("cifar10_up64", "channel_split"): 8,
+        ("cifar100", "channel_split"): 24,
     }[(cfg.dataset, cfg.arch)]
     if len(work) != expected_runs:
         raise RuntimeError(f"Stage 1 matrix must contain exactly {expected_runs} runs")

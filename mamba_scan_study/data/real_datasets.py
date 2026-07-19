@@ -7,6 +7,8 @@ from torch.utils.data import DataLoader, Dataset
 
 CIFAR_MEAN = (0.4914, 0.4822, 0.4465)
 CIFAR_STD = (0.2470, 0.2435, 0.2616)
+CIFAR100_MEAN = (0.5071, 0.4865, 0.4409)
+CIFAR100_STD = (0.2673, 0.2564, 0.2762)
 TINY_MEAN = (0.4802, 0.4481, 0.3975)
 TINY_STD = (0.2302, 0.2265, 0.2262)
 
@@ -43,6 +45,43 @@ def build_cifar10_loaders(
         root=data_root, train=True, transform=train_tf, download=download
     )
     test_set = torchvision.datasets.CIFAR10(
+        root=data_root, train=False, transform=test_tf, download=download
+    )
+    return _make_loaders(train_set, test_set, batch_size, num_workers, generator=generator)
+
+
+def build_cifar100_loaders(
+    data_root,
+    batch_size,
+    num_workers=0,
+    download=True,
+    generator=None,
+    img_size=32,
+):
+    import torchvision
+    import torchvision.transforms as transforms
+
+    os.makedirs(data_root, exist_ok=True)
+    resize = [] if img_size == 32 else [transforms.Resize((img_size, img_size), antialias=True)]
+    train_tf = transforms.Compose(
+        [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            *resize,
+            transforms.ToTensor(),
+            transforms.Normalize(CIFAR100_MEAN, CIFAR100_STD),
+        ]
+    )
+    test_tf = transforms.Compose(
+        [*resize, transforms.ToTensor(), transforms.Normalize(CIFAR100_MEAN, CIFAR100_STD)]
+    )
+    batches_dir = os.path.join(data_root, "cifar-100-python")
+    if os.path.isdir(batches_dir):
+        download = False
+    train_set = torchvision.datasets.CIFAR100(
+        root=data_root, train=True, transform=train_tf, download=download
+    )
+    test_set = torchvision.datasets.CIFAR100(
         root=data_root, train=False, transform=test_tf, download=download
     )
     return _make_loaders(train_set, test_set, batch_size, num_workers, generator=generator)
@@ -155,6 +194,15 @@ def build_real_loaders(
             generator=generator,
             img_size=img_size,
         )
+    if dataset == "cifar100":
+        return build_cifar100_loaders(
+            data_root,
+            batch_size,
+            num_workers,
+            download=download,
+            generator=generator,
+            img_size=img_size,
+        )
     if dataset == "tiny-imagenet":
         return build_tiny_imagenet_loaders(
             data_root,
@@ -163,4 +211,6 @@ def build_real_loaders(
             img_size=img_size,
             generator=generator,
         )
-    raise ValueError("dataset must be 'cifar10', 'cifar10_up64', or 'tiny-imagenet'")
+    raise ValueError(
+        "dataset must be 'cifar10', 'cifar10_up64', 'cifar100', or 'tiny-imagenet'"
+    )
