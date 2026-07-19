@@ -148,3 +148,8 @@ Windows: `Start-Process -NoNewWindow -RedirectStandardOutput`
 ## 9. outputs 不进 git
 outputs/ 是数据不是代码,训练时被持续写入。
 执行:git rm -r --cached mamba_scan_study/outputs/ 并加入 .gitignore
+
+## 10. 汇总脚本复用
+- 复用任何汇总/分析脚本前,先确认其分组维度与当前实验的自变量匹配。
+  教训:`tail_80_100_summary.csv` 按 block×grid 汇总,套用到以 variant 为自变量的
+  channel-split 上产生过错误数字。
