@@ -337,6 +337,7 @@ class ChannelSplitBackbone(nn.Module):
         pos_mode="seq_learned",
         dropout=0.0,
         shuffle_seed=0,
+        channel_orders=None,
     ):
         super().__init__()
         if variant not in self.VARIANTS:
@@ -358,7 +359,18 @@ class ChannelSplitBackbone(nn.Module):
         self.group_width = d_model // 4
         self.n_layers = n_layers
         self.pos_mode = pos_mode
-        self.branch_dirs = self.VARIANTS[variant]
+        self.explicit_channel_orders = channel_orders is not None
+        if self.explicit_channel_orders:
+            if variant != "channel_same_row_4":
+                raise ValueError(
+                    "explicit channel_orders require variant='channel_same_row_4'"
+                )
+            # Explicit P0-B orders are absolute: order[t] is a row-major cell.
+            # Starting every group from row-major prevents a second branch-local
+            # reordering for column, diagonal, or anti-diagonal paths.
+            self.branch_dirs = ("row", "row", "row", "row")
+        else:
+            self.branch_dirs = self.VARIANTS[variant]
         self.patch_embed = nn.Conv2d(in_chans, d_model, patch_size, stride=patch_size)
         self.mask_tokens = nn.ParameterList(
             [nn.Parameter(torch.zeros(self.group_width)) for _ in range(4)]
@@ -396,23 +408,44 @@ class ChannelSplitBackbone(nn.Module):
                 "xy_sincos", torch.zeros(4, self.H, self.W, self.group_width), persistent=False
             )
 
-        generator = torch.Generator().manual_seed(self.shuffle_seed)
         permutations = []
         inverses = []
-        shared_permutation = None
-        for group in range(4):
-            if variant == "channel_same_perm_4":
-                if shared_permutation is None:
-                    shared_permutation = torch.randperm(self.L, generator=generator)
-                permutation = shared_permutation.clone()
-            elif variant == "channel_rand_perm_4":
-                permutation = torch.randperm(self.L, generator=generator)
-            else:
-                permutation = torch.arange(self.L)
-            inverse = torch.empty_like(permutation)
-            inverse[permutation] = torch.arange(self.L)
-            permutations.append(permutation)
-            inverses.append(inverse)
+        if self.explicit_channel_orders:
+            if len(channel_orders) != 4:
+                raise ValueError("explicit channel_orders must contain exactly four orders")
+            for group, order in enumerate(channel_orders):
+                permutation = torch.as_tensor(order, dtype=torch.long, device="cpu")
+                if permutation.ndim != 1 or len(permutation) != self.L:
+                    raise ValueError(
+                        f"explicit channel order {group} must have length {self.L}"
+                    )
+                if torch.any(permutation < 0) or torch.any(permutation >= self.L):
+                    raise ValueError(f"explicit channel order {group} has out-of-range values")
+                if torch.unique(permutation).numel() != self.L:
+                    raise ValueError(f"explicit channel order {group} is not a permutation")
+                permutation = permutation.clone()
+                inverse = torch.empty_like(permutation)
+                inverse[permutation] = torch.arange(self.L, dtype=torch.long)
+                permutations.append(permutation)
+                inverses.append(inverse)
+        else:
+            # Keep the legacy generator consumption and all four variants exactly
+            # unchanged when no explicit P0-B paths are supplied.
+            generator = torch.Generator().manual_seed(self.shuffle_seed)
+            shared_permutation = None
+            for group in range(4):
+                if variant == "channel_same_perm_4":
+                    if shared_permutation is None:
+                        shared_permutation = torch.randperm(self.L, generator=generator)
+                    permutation = shared_permutation.clone()
+                elif variant == "channel_rand_perm_4":
+                    permutation = torch.randperm(self.L, generator=generator)
+                else:
+                    permutation = torch.arange(self.L)
+                inverse = torch.empty_like(permutation)
+                inverse[permutation] = torch.arange(self.L)
+                permutations.append(permutation)
+                inverses.append(inverse)
         self.register_buffer("channel_permutations", torch.stack(permutations), persistent=True)
         self.register_buffer("channel_inverse_permutations", torch.stack(inverses), persistent=True)
 
@@ -451,7 +484,12 @@ class ChannelSplitBackbone(nn.Module):
             position = self._position(group, tokens.shape[0], tokens.device)
             permutation = self.channel_permutations[group]
             inverse = self.channel_inverse_permutations[group]
-            if not torch.equal(permutation, torch.arange(self.L, device=permutation.device)):
+            # Explicit P0-B paths always take the same operator graph, including
+            # G1's identity order. Legacy mode retains its historical shortcut.
+            should_permute = self.explicit_channel_orders or not torch.equal(
+                permutation, torch.arange(self.L, device=permutation.device)
+            )
+            if should_permute:
                 tokens = tokens.index_select(1, permutation)
                 if position is not None:
                     position = position.index_select(1, permutation)
@@ -464,7 +502,7 @@ class ChannelSplitBackbone(nn.Module):
                 tokens = tokens + position
             for block in blocks:
                 tokens = block(tokens)
-            if not torch.equal(permutation, torch.arange(self.L, device=permutation.device)):
+            if should_permute:
                 tokens = tokens.index_select(1, inverse)
             outputs.append(restore_scan(tokens, self.H, self.W, self.branch_dirs[group]))
         return self.norm(torch.cat(outputs, dim=-1))

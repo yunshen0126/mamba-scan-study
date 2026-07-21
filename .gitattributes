@@ -1,0 +1,13 @@
+* text=auto
+
+# P0-B ????????????????? SHA-256 ?????
+P0B_L_PATH_BANK_FROZEN.json        -text
+P0B_R_PATH_BANK_FROZEN.json        -text
+P0B_CIFAR10_VAL_SPLIT_FROZEN.json  -text
+P0B_L_PATH_BANK_CANDIDATE.json     -text
+P0B_RUN_LEDGER_104.csv             -text
+docs/P0B_CONFIG_TABLE.md           -text
+P0B_PREREG_FREEZE_L_AUC.md         -text
+P0B_PREREG_FREEZE_R_PATHS.md       -text
+P0B_PREREG_FREEZE_CIFAR10_VAL_SPLIT.md -text
+docs/P0A_B0_FORMAL_DEFINITIONS.md  -text
