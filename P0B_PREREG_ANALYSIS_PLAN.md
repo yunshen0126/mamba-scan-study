@@ -75,4 +75,4 @@ P0-B 的固定边界（`docs/P0B_CONFIG_TABLE.md` §1：仅 mamba、`d-model 256
 
 ---
 
-**本件 SHA：**（待第二次 commit 回填）
+**本件 SHA：** `841d103a1566040a505a22f514f44db816fbd876ed4910cf54104852278b5d15`（对应 commit `a63d9e9` 中的文件内容）
