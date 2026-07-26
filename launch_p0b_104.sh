@@ -6,7 +6,7 @@ REPO=/root/mamba-scan-study
 DATA=/root/autodl-tmp/datasets
 LOGDIR=/root/autodl-tmp/p0b_launch_logs
 PARALLEL=5
-export OMP_NUM_THREADS=4
+export OMP_NUM_THREADS=1
 
 EXP_IDS="GEO_SG1 GEO_SG2 GEO_SG3 GEO_SG4 GEO_DIV RND_S1 RND_S2 RND_S3 RND_D1 RND_D2 RND_D3 LOC_S LOC_D"
 SEEDS="0 1 2 3"
