@@ -313,6 +313,8 @@ grid32 interaction 在 2 尺度 × 2 backbone 的 test 口径下四格全部显�
 
 结合 8b.4:d256 mamba 中,单方向×4 已能将训练集拟合至与真四方向几乎同水平,但泛化差 3.7pp。**几何方向多样性在高负载下购买的是泛化能力;容量受限(d64)时该差异同时表现在拟合上,容量充足(d256)时仅存于泛化。** 此现象本身与"容量门控机制表达"的两因素账一致,但属事后观察。
 
+**【2026-07-26 修订,不删改以上原文】** 以上"口径饱和(ceiling)"的归因已被批次 D(CIFAR-100)证伪:mamba32 在 train_acc 仅 78.28%(远低于本节 92.5% 的饱和水平,亦低于预注册 85% 参考线)时,train interaction 仍从早窗 +2.47 衰减至尾窗 +1.12,而同批 gru32 在更低的 72.53% train_acc 下完全不衰减。可见 train_acc 绝对水平不能预测该衰减,衰减仅与 `block=mamba` 且 `d=256` 相关。详见 §8d.5,替代假说见 §8d.6。本段原文作为该判断在当时证据下的合理归因予以保留,不作删除。
+
 ## 8b.6 几何性判决(interaction 分解,grid32)
 
 within-structured 多样性收益 vs within-shuffle 多样性收益:
@@ -352,6 +354,111 @@ delta_direction。**套到 channel-split 输出上是错的** —— 它算出�
 
 **教训(建议写入 AGENTS.md):** 复用汇总脚本前,先确认它的分组维度与新实验的
 自变量匹配。channel-split 的自变量是 variant,不是 block×grid。
+
+---
+
+# §8d 批次 D:CIFAR-100 channel-split 2×2 析因(定稿,d256 5-seed)
+
+**版本:2026-07-26 定稿。数据源为五个完整的 `csplit_c100_d256_seed{0..4}/stage1_history.csv`(各 2400 行 = 24 组合 × 100 epoch),复算脚本为 `mamba_scan_study/analysis/analyze_csplit_factorial.py` 同构口径,独立重算全部通过,容差 0.02pp。**
+
+## 8d.1 设计与可比性
+
+CIFAR-100,d256 单尺度,其余配置与批次 C d256 完全一致:`--n-layers 2 --effective-batch 128 --epochs 100 --warmup-epochs 5 --base-lr 0.001 --weight-decay 0.05 --grad-clip 1.0 --pos-mode xy_learned --num-workers 4`,四变体 real_4dir / same_row_4 / same_perm_4 / rand_perm_4,seed ∈ {0,1,2,3,4}。
+
+全批实测 `micro_batch=128 / accum_steps=1`,与批次 C d256 逐格相同,故按 `docs/PREREG_batch_D_cifar100.md` §6,两批次效应量可直接并列,无需追加偏离记录。复现基线 commit 为 `02981d9`(依据 `P0B_PREREG_ADDENDUM_01.md` §6 第 3 条;其后四个纯文档/PSI-分析 commit `f8b4785`/`1a22e26`/`fe2e8f0`/`2f3606d` 不含训练代码,不影响本批次结果)。
+
+数据完整性:120 cell(2 block × 3 grid × 4 variant × 5 seed),每 cell epoch 1..100 全覆盖,无 NaN/Inf。**本节禁止使用 `tail_80_100_summary.csv`**(分组维度与 channel-split 不匹配,见 §8c)。
+
+## 8d.2 主结果表(5-seed mean [95% CI], pp)
+
+### TRAIN(train_acc,预注册主口径,尾窗 80-100)
+
+| | structure | diversity | interaction |
+|---|---|---|---|
+| gru 8 | +8.03 [7.37, 8.68] | −0.18 [−0.60, 0.23] | −0.68 [−1.31, −0.05] |
+| gru 16 | +8.86 [7.80, 9.92] | −0.28 [−0.67, 0.12] | −0.74 [−1.57, 0.09] |
+| gru 32 | +12.74 [11.14, 14.35] | +2.16 [1.82, 2.50] | +4.20 [3.60, 4.80] |
+| mamba 8 | +8.75 [7.98, 9.52] | −0.67 [−0.88, −0.46] | −1.55 [−3.15, 0.05] |
+| mamba 16 | +12.54 [11.55, 13.54] | −0.33 [−1.03, 0.36] | −0.67 [−2.24, 0.90] |
+| mamba 32 | +18.71 [18.16, 19.26] | +0.73 [0.11, 1.35] | +1.14 [−0.07, 2.34] |
+
+### TEST(test_acc,次要终点)
+
+依 `docs/PREREG_batch_D_cifar100.md` §3,test 口径在发车前已声明为**次要终点(secondary endpoint)**,非事后探索。
+
+| | structure | diversity | interaction |
+|---|---|---|---|
+| gru 8 | +4.40 [3.89, 4.91] | +0.39 [−0.22, 1.00] | +0.17 [−0.15, 0.50] |
+| gru 16 | +5.87 [5.17, 6.57] | +0.26 [−0.38, 0.90] | +0.40 [−0.67, 1.47] |
+| gru 32 | +12.70 [12.40, 13.01] | +2.01 [1.75, 2.27] | +3.71 [3.19, 4.22] |
+| mamba 8 | +4.45 [3.61, 5.29] | +0.21 [−0.12, 0.55] | +1.17 [0.69, 1.65] |
+| mamba 16 | +7.24 [6.67, 7.81] | +0.86 [0.61, 1.11] | +1.71 [1.29, 2.12] |
+| mamba 32 | +14.33 [13.53, 15.13] | +2.48 [2.12, 2.84] | +4.69 [3.82, 5.57] |
+
+### D4 分解(grid32,interaction 分解为 geom-div / shuffle-div)
+
+| 口径 | | geom-div | shuffle-div |
+|---|---|---|---|
+| TRAIN | gru32 | +4.26 [3.63, 4.89] | +0.06 [−0.06, 0.18] |
+| TRAIN | mamba32 | +1.30 [0.17, 2.43] | +0.16 [−0.31, 0.63] |
+| TEST | gru32 | +3.86 [3.37, 4.35] | +0.16 [0.01, 0.30] |
+| TEST | mamba32 | +4.83 [4.08, 5.58] | +0.14 [−0.15, 0.43] |
+
+## 8d.3 判据判定
+
+逐条对照 `docs/PREREG_batch_D_cifar100.md` §3:
+
+- **判据 D1(structure 单调):** 两个 backbone 均**通过**——gru 与 mamba 的 structure 均随 grid 8→16→32 单调递增。
+- **判据 D2(diversity 门控,要求 grid32 CI 下界>0 且 grid8 CI 跨 0):** GRU **通过**。MAMBA 的 grid32 子句通过(+0.73,下界 0.11),但 **grid8 子句不通过**——要求"grid8 diversity CI 跨 0",实测 −0.67 [−0.88, −0.46] 显著为负,不是跨 0。判**判据 D2 在 MAMBA 上 FAIL**。
+- **判据 D3(interaction 门控,要求 grid32 CI 下界>0 且 grid8 CI 跨 0):** **两个 backbone 均 FAIL**。GRU 的 grid32 子句通过(+4.20,下界 3.60),但 grid8 子句不通过(−0.68 [−1.31, −0.05] 显著为负);MAMBA 的 grid8 子句通过(interaction −1.55 [−3.15, 0.05] 跨 0),但**grid32 子句不通过**(+1.14 [−0.07, 2.34] 跨 0,未能建立下界>0)。
+- **判据 D4(几何性):** 两个 backbone 均**通过**——grid32 的 geom-div 全部显著为正,shuffle-div 全部跨 0。
+
+## 8d.4 新现象:低负载端由零转负
+
+批次 C(§8b.7)中 grid8 的 diversity/interaction 只是"跨 0",本批次在 CIFAR-100 低负载端变为**显著为负**(gru8 interaction −0.68 [−1.31, −0.05];mamba8 diversity −0.67 [−0.88, −0.46])。即低负载档,几何多样性不是无效而是**有代价**:四通道各自分摊一个方向,不如四路同向、把全部容量押在单一几何方向上。
+
+此项与 §8b.7 记录的"GRU grid8 interaction 轻微为负"同向,且在 CIFAR-100 上强度更大、统计上更确定(批次 C 仅 GRU 一侧观察到,批次 D 在 GRU interaction 与 MAMBA diversity 两处均观察到)。回指 §8b.7:该节当时只敢写"GRU 独有观察,不得升格为独立结论";本批次数据支持将"低负载端有代价"扩展为跨 backbone 的一般现象,但仍限于本节判据 D2/D3 涉及的具体子句,不外推为更强表述。
+
+## 8d.5 ceiling 假设被本批次证伪
+
+§8b.4 对 d256 mamba32 判据3(train interaction 未过)给出的归因是:**train_acc 已饱和至 92.5%,real 与 same_row 在 train 上仅差 0.77pp,故判据未过是口径饱和(ceiling)而非机制缺失**。批次 D 提供了直接检验这一假设的机会。
+
+批次 D 的 mamba32 尾窗(90-100)train_acc 仅 **78.28%**,远低于批次 C d256 mamba32 的 92.5%,也低于 `docs/PREREG_batch_D_cifar100.md` §4 分支 D 设定的 85% 参考线。**若 ceiling 解释成立,train interaction 在此低 train_acc 下不应再衰减。但实测 TRAIN interaction 仍从早窗(epoch 10-20)+2.47 衰减至尾窗(epoch 90-100)+1.12,衰减幅度 −54%。** 作为对照,同批 gru32 在 72.53% 的更低 train_acc 下完全不衰减(早窗 +3.59 → 尾窗 +4.20,不降反升)。
+
+三个数据集/尺度的完整轨迹:
+
+**本表所有量取 epoch 90–100 窗口,与 §8d.2 主结果表的尾窗(epoch 80–100)不同,因轨迹分析需要末端窗口而非整个尾窗。**
+
+| 数据集/尺度 | block | interaction (ep10–20) | interaction (ep90–100) | train_acc (ep90–100) |
+|---|---|---|---|---|
+| C10 d64 | gru | +2.83 | +3.58 | 69.21% |
+| C10 d64 | mamba | +1.08 | +2.17 | 72.35% |
+| C10 d256 | gru | +4.22 | +4.10 | 89.94% |
+| C10 d256 | mamba | +2.60 | +0.37 | 92.91% |
+| C100 d256 | gru | +3.59 | +4.20 | 72.53% |
+| C100 d256 | mamba | +2.47 | +1.12 | 78.28% |
+
+**结论:train_acc 水平不能预测该衰减。** 衰减仅出现在 `block=mamba` 且 `d=256` 的两格(C10 d256 mamba、C100 d256 mamba),跨两个数据集各一格,与 train_acc 绝对水平(92.91% 与 78.28%,相差 14.6pp)无关。**原 ceiling 解释(§8b.4)按本批次数据判为不成立。**
+
+## 8d.6 替代解释(标注为假说,非结论)
+
+【强度:中 / 假说】Mamba 的长程 carry 在容量充足(d256)时,为单方向扫描(same_row_4)提供了拟合训练集的替代路径,使其能够逼近 real_4dir 的训练集表现,从而压低 train interaction;GRU 缺少这一路径。d64 容量不足以支撑该路径被利用,故 d64 两个 backbone 均不衰减。
+
+**该路径不迁移到泛化。** 批次 D mamba32 的 TEST interaction 为 +4.69 [3.82, 5.57],未衰减;real_4dir 的 generalization gap(train−test)+23.21pp 反而**小于** same_row_4 的 +26.74pp——即单方向路径在训练集上追近了 real_4dir,但代价是更严重的过拟合。
+
+此假说与本项目起点的 VerticalCarry 受控实验一致(§1:row=col=100%、shuffle 塌至 52.7%),可表述为:**carry 足以拟合,不足以泛化。** 两格证据(C10 d256 mamba、C100 d256 mamba)不足以支撑更强表述,仅作方向性假说记录。
+
+## 8d.7 分支判定
+
+按 `docs/PREREG_batch_D_cifar100.md` §4,本批次最接近**分支 B**(框架成立、阈值随任务难度移动),但移动方向是低负载端(grid8)由跨 0 转为显著为负,而非预注册设想的"阈值提前点亮(如 grid16 即点亮)"。
+
+分支 D 的前件半满足(mamba32 train_acc 78.28% < 85%)而后件不满足(train 侧 interaction 仍衰减,与 gru32 不一致,train/test 结论不一致)——该组合正是 §8d.5 证伪 ceiling 解释的依据,而非分支 D 所设想的"顺带反证 ceiling、加强 §8b.5 可信度"的干净结果。
+
+明确记录:**非分支 A(判据 D2/D3 均有 FAIL 子句,非三判据全过),非分支 C(structure 与 D4 两判据仍稳健通过,并非全面不显著)。**
+
+## 8d.8 claim boundary
+
+结论限于 CIFAR-10 / CIFAR-100 两个自然图像分类数据集、channel-split 架构、d256、本文冻结的四条几何路径(real_4dir / same_row_4 / same_perm_4 / rand_perm_4)。不得外推至其他任务域、其他架构(non-channel-split)或未测尺度(CIFAR-100 d64 未跑)。§8d.6 为假说,不为结论,不得在正文中作为已证实机制引用。
 
 ## 9. 【未完成】待补证据
 
