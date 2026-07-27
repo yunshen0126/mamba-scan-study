@@ -6,5 +6,6 @@ datasets/
 *.npz
 logs/
 mamba_scan_study/outputs/
+/outputs/
 
 **/.ipynb_checkpoints/

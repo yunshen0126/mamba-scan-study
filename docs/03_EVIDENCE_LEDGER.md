@@ -460,6 +460,78 @@ CIFAR-100,d256 单尺度,其余配置与批次 C d256 完全一致:`--n-layers 2
 
 结论限于 CIFAR-10 / CIFAR-100 两个自然图像分类数据集、channel-split 架构、d256、本文冻结的四条几何路径(real_4dir / same_row_4 / same_perm_4 / rand_perm_4)。不得外推至其他任务域、其他架构(non-channel-split)或未测尺度(CIFAR-100 d64 未跑)。§8d.6 为假说,不为结论,不得在正文中作为已证实机制引用。
 
+# §8e P0-B 可行性 pilot:104 runs 定稿(Mamba-only, d256, 4 seed)
+
+**版本:2026-07-28 定稿。数据源为 `outputs/p0b_{exp_id}_{reliance}_seed{S}/metadata.json`，独立复算严格遵循 `P0B_PREREG_ANALYSIS_PLAN.md` §1–§3；所有报告量均为尾窗 epoch 80–100 的 run 内算术均值、seed 配对后聚合，单位为百分点(pp)。**
+
+## 8e.1 完整性与溯源
+
+104/104 runs 完成，零失败。完整析因为 13 个 `exp_id` × 2 个 reliance × training seed 0..3；每条 `validation_history` 恰为连续 epoch 1..100 的 100 行，字段集严格为 `{epoch, learning_rate, train_loss, train_accuracy, validation_loss, validation_accuracy}`，不含任何 test 字段。全批 `micro_batch=128`、`accum_steps=1`、`training_config.epochs=100`、`training_config.num_workers=4`，`git_commit` 前七位均为 `34edddb`；四个冻结源 SHA 与 ledger SHA 均在全批一致。grid8 参数量均为 282122、grid32 均为 282890，且各 grid 内 `architecture_signature` 唯一。
+
+`git_dirty=true` 出现在 103/104 个 run；唯一的 false 是 canary（GEO_SG1 / R_low / seed0）。原因是旧 `.gitignore` 未覆盖仓库根 `outputs/`：canary 构造 metadata 时产物目录尚未生成，其后每个 run 均观察到前序未跟踪目录。本轮已在 `.gitignore` 追加根锚定的 `/outputs/`。该记录缺陷**不影响实验结论**，因为全批 `git_commit` 一致。
+
+## 8e.2 五个主对比
+
+口径依 `P0B_PREREG_ANALYSIS_PLAN.md` §1–§3：主终点为 validation accuracy；official test 在 P0-B 全程未实例化。每格 4 个 seed，区间为 `mean ± 3.182 × s / sqrt(4)`，其中 `s` 为跨 seed 样本标准差(ddof=1)。
+
+| 对比/分解 | R_low | R_high | 交互(R_high−R_low) |
+|---|---|---|---|
+| ① mean(GEO_S*) − mean(RND_S*) | +3.66 [+3.26, +4.06] | +11.02 [+10.55, +11.49] | +7.36 [+7.14, +7.58] |
+| ② P_G − P_R | +0.86 [+0.20, +1.52] | +4.16 [+3.84, +4.47] | +3.29 [+2.83, +3.76] |
+| ③ GEO_SG1 − GEO_SG2 | −0.09 [−0.48, +0.29] | +0.30 [−0.66, +1.27] | +0.40 [−0.47, +1.27] |
+| ④ GEO_SG1 − GEO_SG3 | −0.03 [−0.67, +0.62] | +2.96 [+1.97, +3.96] | +2.99 [+2.50, +3.48] |
+| ⑤ P_G − P_LMTO | +0.45 [−0.21, +1.11] | +1.97 [+0.30, +3.65] | +1.52 [+0.06, +2.98] |
+| P_G = GEO_DIV − mean(GEO_S*) | +0.85 [+0.55, +1.15] | +4.23 [+4.06, +4.40] | +3.38 [+2.92, +3.83] |
+| P_R = mean(RND_D*) − mean(RND_S*) | −0.01 [−0.52, +0.50] | +0.07 [−0.24, +0.39] | +0.08 [−0.26, +0.42] |
+| P_LMTO = LOC_D − LOC_S | +0.40 [−0.18, +0.98] | +2.26 [+0.44, +4.07] | +1.86 [+0.16, +3.55] |
+
+## 8e.3 核心发现：多样性收益是几何专属的
+
+`P_R` 在两档 reliance 下均为零：R_low −0.01 [−0.52, +0.50]，R_high +0.07 [−0.24, +0.39]；相对地，`P_G` 在 R_high 为 +4.23 [+4.06, +4.40]。因此，四条互不相同的**随机**路径相对四条相同随机路径没有收益，而四条互不相同的**几何**路径存在大幅收益。这将“多路径收益”与“集成效应”分离，是依赖 k=1 vs k=4 的既有扫描顺序比较无法区分的量。
+
+## 8e.4 零对照与负载门控
+
+③ polarity 在两档均跨零，符合 GEO_SG1 与 GEO_SG2 无向 `d_seq` 严格相同的设计预期，构成装置未虚报效应的行为证据。④ scan axis 在 R_low 为零、R_high 为 +2.96 [+1.97, +3.96]，交互 +2.99：同一几何差异在低扫描负载下不存在、在高负载下达到约 3pp，是负载门控最直接的单点演示。
+
+## 8e.5 ⑤ 的结果与事前预期的偏离
+
+`P0B_PREREG_ADDENDUM_01.md` §3.2 事前声明 `contrast_5 ≈ 0` 为预期。实测 R_low +0.45 跨零，符合该预期；R_high 为 +1.97 [+0.30, +3.65]，下界仅勉强越零。**4 seed 下该下界脆弱，不足以支撑强主张。**
+
+更具信息量的是分解：`P_LMTO` 在 R_high 为 +2.26，说明 locality 匹配的 topology-perturbed 轨道同样获得多路径收益，仅小于 canonical 轨道。R_high 单路径侧 `mean(RND_S*)=63.27`、`LOC_S=70.19`、`mean(GEO_S*)=74.29`，故回收比例 `(LOC_S−RND_S)/(GEO_S−RND_S)=62.8%`。按配置表 §1⑤ 的措辞约束，不得写成“全部收益来自 locality”，亦不得单独排除完整 locality 分布、AxisBias 幅度、polarity 或 coverage 差异。
+
+## 8e.6 事前终点选择的验证
+
+该终点选择在 P0-B 任何 run 执行之前冻结。将同一批数据改用 `train_accuracy`，其余口径不变，结果如下。
+
+| 量 | R_low train_accuracy | R_high train_accuracy |
+|---|---|---|
+| ① | +7.11 [+6.85, +7.37] | +16.25 [+14.44, +18.07] |
+| ② | +1.57 [+0.78, +2.36] | +2.23 [+1.69, +2.77] |
+| P_G | +1.50 [+0.75, +2.24] | +2.48 [+1.85, +3.10] |
+| ④ | −0.14 [−0.83, +0.55] | −0.37 [−1.26, +0.53] |
+
+R_high 尾窗 train_accuracy 分别为：GEO_SG1 91.63、GEO_SG3 92.00、GEO_DIV 94.57、RND_S1 75.90、LOC_S 82.40、LOC_D 85.57。结构组达 91.6–94.6%，超过 §8d.5 记录的 88–90% 阈值。若沿用批次 C/D 的 train_acc 口径，`P_G` 被压缩约 41%，且 ④ 会由 validation 的 +2.96 反转为 −0.37（符号相反且跨零）；分析计划 §1 的事前决定避免了“扫描轴向无影响”的错误结论。
+
+## 8e.7 C8 方差估计与主实验含义
+
+| 对比 | R_low sd | R_high sd | 交互 sd |
+|---|---:|---:|---:|
+| ① | 0.252 | 0.294 | 0.136 |
+| ② | 0.413 | 0.198 | 0.293 |
+| ③ | 0.245 | 0.608 | 0.545 |
+| ④ | 0.405 | 0.624 | 0.309 |
+| ⑤ | 0.416 | 1.054 | 0.916 |
+
+跨 seed 方差很小，多数对比 sd 在 0.2–0.6 pp；①、②、④的主要效应按此量级在 2–3 个 seed 下即可达到 80% 功效。方差最大的是⑤的 R_high（sd 1.054）。本条仅为方差量级估计：配置表 §1 已将 13 个条件的“确认性”列全部标为否，本批次不得用于提出确认性主张（依 `P0B_PREREG_ANALYSIS_PLAN.md` §4）。
+
+## 8e.8 成本实测
+
+grid8 单 run 约 1690 s（28.2 min），grid32 约 6995 s（116.6 min）；5 进程并行时，104 runs 总墙钟约 27 h。相对配置表 §2 的原估计（52 GPU·h；grid8 20 min、grid32 40 min），grid8 估计准确，**grid32 实际为估计的 2.9 倍**。原因为 explicit permutation 的 `index_select` 开销随序列长度线性增长，而原估计外推自批次 C 的 `real_4dir` 实现，后者没有该开销。B5 单进程实测峰值显存为 3595 MiB，较批次 C 同规格的 3379 MiB 高 6.4%。该成本修正记录于此，不修改受 SHA 门控的配置表 §2。
+
+## 8e.9 claim boundary
+
+结论限于 CIFAR-10、channel-split 架构、Mamba backbone、d256、两档 reliance（grid8/grid32）及本文冻结的 G/R/L 三族路径。P0-B 是可行性 pilot，非确认性检验；跨数据集、跨 backbone、跨尺度的外推均须由主实验支持。
+
 ## 9. 【未完成】待补证据
 
 | 实验 | 状态 | 为什么必需 |
