@@ -19,7 +19,7 @@ import uuid
 
 import torch
 
-from mamba_scan_study.experiments.p0b_data import build_p0b_loaders
+from mamba_scan_study.experiments.p0b_data import DATASET_CLASS_COUNTS, build_p0b_loaders
 from mamba_scan_study.experiments.p0b_path_bank import (
     EXPECTED_SOURCE_SHA256,
     P0B_EXP_IDS,
@@ -111,6 +111,8 @@ LEDGER_FIELDS = (
 REQUIRED_METADATA_FIELDS = frozenset(
     {
         "protocol",
+        "dataset",
+        "augmentation",
         "exp_id",
         "reliance",
         "grid",
@@ -181,9 +183,9 @@ def verify_formal_config(source_paths: P0BSourcePaths | None = None) -> dict[str
     return source_sha256
 
 
-def architecture_operator_signature(grid: int) -> dict[str, object]:
+def architecture_operator_signature(grid: int, dataset: str = "cifar10") -> dict[str, object]:
     """Path-independent formal architecture signature; no numeric Mamba FLOPs claim."""
-    return {
+    signature = {
         "model": "ChannelSplitBackbone",
         "dataset": FORMAL_CONFIG.dataset,
         "block_type": FORMAL_CONFIG.block_type,
@@ -197,10 +199,14 @@ def architecture_operator_signature(grid: int) -> dict[str, object]:
         "base_variant": "channel_same_row_4",
         "explicit_path_control_flow": "row_flatten+order_index_select+inverse_index_select",
     }
+    if dataset != "cifar10":
+        signature["dataset"] = dataset
+        signature["n_classes"] = DATASET_CLASS_COUNTS[dataset]
+    return signature
 
 
-def nominal_flops_equality_signature(grid: int) -> str:
-    return _sha256_bytes(_canonical_json_bytes(architecture_operator_signature(grid)))
+def nominal_flops_equality_signature(grid: int, dataset: str = "cifar10") -> str:
+    return _sha256_bytes(_canonical_json_bytes(architecture_operator_signature(grid, dataset)))
 
 
 def _ledger_row(resolution: P0BPathResolution) -> dict[str, str]:
@@ -291,7 +297,9 @@ def verify_ledger(path: str | Path, source_paths: P0BSourcePaths | None = None) 
     return _sha256_bytes(payload)
 
 
-def construct_requested_model(resolution: P0BPathResolution, device: torch.device) -> ChannelSplitBackbone:
+def construct_requested_model(
+    resolution: P0BPathResolution, device: torch.device, dataset: str = "cifar10"
+) -> ChannelSplitBackbone:
     return ChannelSplitBackbone(
         img_size=FORMAL_CONFIG.img_size,
         patch_size=patch_size_for_grid(resolution.grid),
@@ -299,7 +307,7 @@ def construct_requested_model(resolution: P0BPathResolution, device: torch.devic
         d_model=FORMAL_CONFIG.d_model,
         n_layers=FORMAL_CONFIG.n_layers,
         block_type=FORMAL_CONFIG.block_type,
-        n_classes=10,
+        n_classes=DATASET_CLASS_COUNTS[dataset],
         variant="channel_same_row_4",
         pos_mode=FORMAL_CONFIG.pos_mode,
         channel_orders=resolution.channel_orders,
@@ -322,6 +330,8 @@ def build_metadata(
     runtime_config: FormalP0BConfig = FORMAL_CONFIG,
     micro_batch: int = FORMAL_MICRO_BATCH,
     accum_steps: int = FORMAL_ACCUM_STEPS,
+    dataset: str = "cifar10",
+    augmentation: str = "p0b_legacy",
 ) -> dict[str, object]:
     if micro_batch <= 0 or runtime_config.effective_batch % micro_batch:
         raise ValueError("metadata micro-batch must divide effective batch")
@@ -331,9 +341,11 @@ def build_metadata(
         micro_batch != FORMAL_MICRO_BATCH or accum_steps != FORMAL_ACCUM_STEPS
     ):
         raise ValueError("formal P0-B metadata must use frozen micro-batch 128 and accum_steps 1")
-    signature = architecture_operator_signature(resolution.grid)
+    signature = architecture_operator_signature(resolution.grid, dataset)
     return {
         "protocol": "P0B",
+        "dataset": dataset,
+        "augmentation": augmentation,
         "exp_id": resolution.exp_id,
         "reliance": reliance_for_grid(resolution.grid),
         "grid": resolution.grid,
@@ -357,7 +369,7 @@ def build_metadata(
         "architecture_signature": _sha256_bytes(_canonical_json_bytes(signature)),
         "operator_signature": signature["explicit_path_control_flow"],
         "nominal_flops_method": "path-independent architecture equality signature; no absolute Mamba FLOPs estimator",
-        "nominal_flops_equality_signature": nominal_flops_equality_signature(resolution.grid),
+        "nominal_flops_equality_signature": nominal_flops_equality_signature(resolution.grid, dataset),
         "git_commit": _git_value(["git", "rev-parse", "HEAD"], "UNKNOWN"),
         "git_dirty": bool(_git_value(["git", "status", "--porcelain"], "UNKNOWN")),
         "micro_batch": micro_batch,
@@ -386,9 +398,16 @@ def _expected_metadata_values(expected: Mapping[str, object]) -> tuple[str, ...]
 
 
 def _compare_metadata(observed: Mapping[str, object], expected: Mapping[str, object]) -> None:
-    _require_metadata_complete(observed)
+    normalized = dict(observed)
+    legacy_metadata = "dataset" not in normalized and "augmentation" not in normalized
+    if legacy_metadata:
+        normalized["dataset"] = "cifar10"
+        normalized["augmentation"] = "p0b_legacy"
+    _require_metadata_complete(normalized)
     for key in _expected_metadata_values(expected):
-        if observed.get(key) != expected.get(key):
+        if legacy_metadata and key in {"git_commit", "git_dirty"}:
+            continue
+        if normalized.get(key) != expected.get(key):
             raise ValueError(f"P0-B completed checkpoint metadata mismatch for {key}")
 
 
@@ -531,8 +550,19 @@ def write_completed_run(
     return final_checkpoint, metadata_path, completed_marker
 
 
-def _run_directory(exp_id: str, grid: int, training_seed: int, mode: str, debug_root: str | None) -> Path:
-    name = f"p0b_{exp_id}_{reliance_for_grid(grid)}_seed{training_seed}"
+def _run_directory(
+    exp_id: str,
+    grid: int,
+    training_seed: int,
+    mode: str,
+    debug_root: str | None,
+    dataset: str = "cifar10",
+    augmentation: str = "p0b_legacy",
+) -> Path:
+    if dataset == "cifar10" and augmentation == "p0b_legacy":
+        name = f"p0b_{exp_id}_{reliance_for_grid(grid)}_seed{training_seed}"
+    else:
+        name = f"p0b_{dataset}_{augmentation}_{exp_id}_{reliance_for_grid(grid)}_seed{training_seed}"
     if mode == "formal":
         return FORMAL_RUN_ROOT / name
     if not debug_root:
@@ -547,6 +577,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--training-seed", type=int, choices=P0B_TRAINING_SEEDS, required=True)
     parser.add_argument("--micro-batch", type=int, default=None)
     parser.add_argument("--data-root", default="data")
+    parser.add_argument("--dataset", choices=tuple(DATASET_CLASS_COUNTS), default="cifar10")
+    parser.add_argument("--augmentation", choices=("p0b_legacy", "main_uniform"), default="p0b_legacy")
     parser.add_argument("--ledger", default=str(REPO_ROOT / LEDGER_FILENAME))
     parser.add_argument("--mode", choices=("formal", "debug"), default="formal")
     parser.add_argument("--debug-root")
@@ -596,14 +628,16 @@ def run_one_cell(args: argparse.Namespace) -> str:
             f"DRY_RUN_OK {args.exp_id} grid={args.grid} seed={args.training_seed} "
             f"micro_batch={micro_batch} accum_steps={accum_steps} ledger={ledger_sha256}"
         )
-    if not torch.cuda.is_available():
-        raise RuntimeError("formal P0-B execution requires CUDA; no CPU fallback is permitted")
     from mamba_scan_study.experiments.run_stage1_seed0 import set_seed
 
-    device = torch.device("cuda")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     set_seed(args.training_seed)
-    model = construct_requested_model(resolution, device)
-    runtime_config = FORMAL_CONFIG if args.mode == "formal" else replace(FORMAL_CONFIG, epochs=args.debug_epochs, num_workers=0)
+    model = construct_requested_model(resolution, device, args.dataset)
+    runtime_config = (
+        replace(FORMAL_CONFIG, dataset=args.dataset)
+        if args.mode == "formal"
+        else replace(FORMAL_CONFIG, dataset=args.dataset, epochs=args.debug_epochs, num_workers=0)
+    )
     metadata = build_metadata(
         resolution,
         model,
@@ -611,8 +645,12 @@ def run_one_cell(args: argparse.Namespace) -> str:
         runtime_config=runtime_config,
         micro_batch=micro_batch,
         accum_steps=accum_steps,
+        dataset=args.dataset,
+        augmentation=args.augmentation,
     )
-    run_directory = _run_directory(args.exp_id, args.grid, args.training_seed, args.mode, args.debug_root)
+    run_directory = _run_directory(
+        args.exp_id, args.grid, args.training_seed, args.mode, args.debug_root, args.dataset, args.augmentation
+    )
     completed = validate_completed_run(
         run_directory / "final_checkpoint.pt",
         run_directory / "metadata.json",
@@ -623,6 +661,8 @@ def run_one_cell(args: argparse.Namespace) -> str:
     )
     if completed:
         return f"COMPLETED_SKIP {args.exp_id} grid={args.grid} seed={args.training_seed}"
+    if not torch.cuda.is_available():
+        raise RuntimeError("formal P0-B execution requires CUDA; no CPU fallback is permitted")
 
     from mamba_scan_study.experiments.run_stage1_seed0 import (
         evaluate,
@@ -637,6 +677,8 @@ def run_one_cell(args: argparse.Namespace) -> str:
         micro_batch,
         args.training_seed,
         num_workers=runtime_config.num_workers,
+        dataset=args.dataset,
+        augmentation=args.augmentation,
     )
     set_seed(args.training_seed)
     optimizer = torch.optim.AdamW(model.parameters(), lr=runtime_config.base_lr, weight_decay=runtime_config.weight_decay)
@@ -664,6 +706,8 @@ def run_one_cell(args: argparse.Namespace) -> str:
         runtime_config=runtime_config,
         micro_batch=micro_batch,
         accum_steps=accum_steps,
+        dataset=args.dataset,
+        augmentation=args.augmentation,
     )
     write_completed_run(run_directory, model, metadata)
     return f"COMPLETED {args.exp_id} grid={args.grid} seed={args.training_seed}"
