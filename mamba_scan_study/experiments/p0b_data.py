@@ -39,6 +39,13 @@ DATASET_CLASS_COUNTS = {
     "organsmnist": 11,
     "eurosat": 10,
 }
+DATASET_SPLIT_LENGTHS = {
+    "cifar10": (45_000, 5_000),
+    "organamnist": (34_561, 6_491),
+    "organcmnist": (12_975, 2_392),
+    "organsmnist": (13_932, 2_452),
+    "eurosat": (22_000, 2_500),
+}
 ORGAN_DATASETS = {
     "organamnist": "OrganAMNIST",
     "organcmnist": "OrganCMNIST",
@@ -65,10 +72,45 @@ class P0BLoaders:
     train: DataLoader
     validation: DataLoader
     frozen_split: FrozenSplit | None
+    data_split_provenance: dict[str, object]
 
 
 def _sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _data_split_provenance(
+    dataset: str,
+    *,
+    source: str,
+    artifact: str,
+    sha256: str,
+    train_n: int,
+    val_n: int,
+    targets_sha256: str | None = None,
+) -> dict[str, object]:
+    _require(source in {"frozen", "medmnist_official"}, f"invalid split source: {source}")
+    _require((train_n, val_n) == DATASET_SPLIT_LENGTHS[dataset], f"{dataset} train/validation sample count is invalid")
+    _require(len(sha256) == 64, f"{dataset} split artifact SHA-256 is invalid")
+    provenance = {
+        "source": source,
+        "artifact": artifact,
+        "sha256": sha256,
+        "train_n": train_n,
+        "val_n": val_n,
+    }
+    if targets_sha256 is not None:
+        _require(len(targets_sha256) == 64, f"{dataset} targets SHA-256 is invalid")
+        provenance["targets_sha256"] = targets_sha256
+    return provenance
 
 
 def int64_c_sha256(values: object) -> str:
@@ -247,6 +289,7 @@ def _build_generic_loaders(
     training_seed: int,
     num_workers: int,
     pin_memory: bool,
+    data_split_provenance: dict[str, object],
 ) -> P0BLoaders:
     generator = torch.Generator().manual_seed(int(training_seed))
     train_loader = DataLoader(
@@ -268,7 +311,12 @@ def _build_generic_loaders(
         drop_last=False,
         worker_init_fn=seed_worker,
     )
-    return P0BLoaders(train=train_loader, validation=validation_loader, frozen_split=None)
+    return P0BLoaders(
+        train=train_loader,
+        validation=validation_loader,
+        frozen_split=None,
+        data_split_provenance=data_split_provenance,
+    )
 
 
 def _validate_labels(dataset: object, dataset_name: str, expected_length: int) -> None:
@@ -310,8 +358,20 @@ def _build_organ_loaders(
         target_transform=_scalar_label,
         download=False,
     )
-    _validate_labels(train_dataset, dataset, {"organamnist": 34561, "organcmnist": 12975, "organsmnist": 13932}[dataset])
-    _validate_labels(validation_dataset, dataset, {"organamnist": 6491, "organcmnist": 2392, "organsmnist": 2452}[dataset])
+    train_n, val_n = len(train_dataset), len(validation_dataset)
+    _require((train_n, val_n) == DATASET_SPLIT_LENGTHS[dataset], f"{dataset} train/validation sample count is invalid")
+    _validate_labels(train_dataset, dataset, train_n)
+    _validate_labels(validation_dataset, dataset, val_n)
+    npz_path = Path(data_root) / f"{dataset}.npz"
+    _require(npz_path.is_file(), f"missing {dataset} official split artifact: {npz_path}")
+    data_split_provenance = _data_split_provenance(
+        dataset,
+        source="medmnist_official",
+        artifact=npz_path.name,
+        sha256=_sha256_file(npz_path),
+        train_n=train_n,
+        val_n=val_n,
+    )
     return _build_generic_loaders(
         train_dataset,
         validation_dataset,
@@ -319,6 +379,7 @@ def _build_organ_loaders(
         training_seed=training_seed,
         num_workers=num_workers,
         pin_memory=pin_memory,
+        data_split_provenance=data_split_provenance,
     )
 
 
@@ -348,8 +409,12 @@ def _sorted_imagefolder(root: Path, transform: object):
     return dataset
 
 
-def _load_eurosat_indices() -> tuple[np.ndarray, np.ndarray]:
-    split_path = Path(__file__).resolve().parents[2] / "P0B_EUROSAT_SPLIT_FROZEN.json"
+def _eurosat_split_path() -> Path:
+    return Path(__file__).resolve().parents[2] / "P0B_EUROSAT_SPLIT_FROZEN.json"
+
+
+def _load_eurosat_indices() -> tuple[np.ndarray, np.ndarray, Path, dict]:
+    split_path = _eurosat_split_path()
     if not split_path.is_file():
         raise FileNotFoundError(f"missing frozen EuroSAT split: {split_path}")
     payload = json.loads(split_path.read_text(encoding="utf-8"))
@@ -361,7 +426,7 @@ def _load_eurosat_indices() -> tuple[np.ndarray, np.ndarray]:
     _require(len(test_indices) == 2_500, "EuroSAT test split length is invalid")
     all_indices = np.concatenate((train_indices, validation_indices, test_indices))
     _require(np.array_equal(np.sort(all_indices), np.arange(27_000, dtype=np.int64)), "EuroSAT split is not a partition")
-    return train_indices, validation_indices
+    return train_indices, validation_indices, split_path, payload
 
 
 def _build_eurosat_loaders(
@@ -375,19 +440,45 @@ def _build_eurosat_loaders(
     pin_memory: bool,
 ) -> P0BLoaders:
     image_root = _resolve_eurosat_root(data_root)
-    train_indices, validation_indices = _load_eurosat_indices()
+    train_indices, validation_indices, split_path, frozen_split = _load_eurosat_indices()
     train_dataset = _sorted_imagefolder(image_root, train_transform)
     validation_dataset = _sorted_imagefolder(image_root, validation_transform)
     _require(len(train_dataset) == 27_000 and len(validation_dataset) == 27_000, "EuroSAT sample count is invalid")
     _require(train_dataset.targets == validation_dataset.targets, "EuroSAT image ordering differs by transform")
     _require(len(set(train_dataset.targets)) == DATASET_CLASS_COUNTS["eurosat"], "EuroSAT class count is invalid")
+    frozen_classes = frozen_split.get("classes")
+    _require(train_dataset.classes == frozen_classes, "EuroSAT class ordering differs from frozen split")
+    class_distributions = frozen_split.get("class_distributions")
+    _require(isinstance(class_distributions, dict), "EuroSAT class distributions are invalid")
+    frozen_overall = class_distributions.get("overall")
+    _require(isinstance(frozen_overall, dict), "EuroSAT overall class distribution is invalid")
+    observed_class_counts = {
+        class_name: int(np.count_nonzero(np.asarray(train_dataset.targets) == class_index))
+        for class_index, class_name in enumerate(train_dataset.classes)
+    }
+    _require(observed_class_counts == frozen_overall, "EuroSAT class counts differ from frozen split")
+    targets_sha256 = int64_c_sha256(train_dataset.targets)
+    train_subset = Subset(train_dataset, train_indices.tolist())
+    validation_subset = Subset(validation_dataset, validation_indices.tolist())
+    train_n, val_n = len(train_subset), len(validation_subset)
+    _require((train_n, val_n) == DATASET_SPLIT_LENGTHS["eurosat"], "eurosat train/validation sample count is invalid")
+    data_split_provenance = _data_split_provenance(
+        "eurosat",
+        source="frozen",
+        artifact=split_path.name,
+        sha256=_sha256_file(split_path),
+        train_n=train_n,
+        val_n=val_n,
+        targets_sha256=targets_sha256,
+    )
     return _build_generic_loaders(
-        Subset(train_dataset, train_indices.tolist()),
-        Subset(validation_dataset, validation_indices.tolist()),
+        train_subset,
+        validation_subset,
         batch_size=batch_size,
         training_seed=training_seed,
         num_workers=num_workers,
         pin_memory=pin_memory,
+        data_split_provenance=data_split_provenance,
     )
 
 
@@ -435,7 +526,8 @@ def build_p0b_loaders(
             pin_memory=pin_memory,
         )
 
-    frozen = load_frozen_split(source_paths) if frozen_split is None else frozen_split
+    paths = default_source_paths() if source_paths is None else source_paths
+    frozen = load_frozen_split(paths) if frozen_split is None else frozen_split
     if cifar10_factory is None:
         from torchvision.datasets import CIFAR10
 
@@ -453,8 +545,16 @@ def build_p0b_loaders(
 
     train_subset = Subset(train_dataset, frozen.train_indices.tolist())
     validation_subset = Subset(validation_dataset, frozen.validation_indices.tolist())
-    _require(len(train_subset) == TRAIN_LENGTH, "P0-B train subset must contain 45,000 examples")
-    _require(len(validation_subset) == VALIDATION_LENGTH, "P0-B validation subset must contain 5,000 examples")
+    train_n, val_n = len(train_subset), len(validation_subset)
+    _require((train_n, val_n) == DATASET_SPLIT_LENGTHS["cifar10"], "cifar10 train/validation sample count is invalid")
+    data_split_provenance = _data_split_provenance(
+        "cifar10",
+        source="frozen",
+        artifact=Path(paths.validation_split).name,
+        sha256=_sha256_file(Path(paths.validation_split)),
+        train_n=train_n,
+        val_n=val_n,
+    )
     generator = torch.Generator().manual_seed(int(training_seed))
     train_loader = DataLoader(
         train_subset,
@@ -475,4 +575,9 @@ def build_p0b_loaders(
         drop_last=False,
         worker_init_fn=seed_worker,
     )
-    return P0BLoaders(train=train_loader, validation=validation_loader, frozen_split=frozen)
+    return P0BLoaders(
+        train=train_loader,
+        validation=validation_loader,
+        frozen_split=frozen,
+        data_split_provenance=data_split_provenance,
+    )
