@@ -343,5 +343,5 @@ organamnist 与 organcmnist 的探针准确率为 94.68% / 94.02%（15-epoch 小
 
 ---
 
-**本件 SHA-256**：（回填）
-**对应 commit**：（回填）
+**本件 SHA-256**：1ccd6245d2583e563086e09379b1e20944110a109c7374d7b8576b62a66cb7ff
+**对应 commit**：68dff0b
