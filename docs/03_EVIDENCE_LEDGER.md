@@ -609,3 +609,119 @@ grid8 单 run 约 1690 s（28.2 min），grid32 约 6995 s（116.6 min）；5 �
 - P0-B 冻结官方 `train=True` 内 45,000/5,000 stratified train/validation split: seed `20260720`, `numpy.random.PCG64`,class 0→9 连续 RNG,每类 4,500/500。
 - `P0B_CIFAR10_VAL_SPLIT_FROZEN.json` SHA `e28719c9154bfcdce9c89ab5c91529eb27403ce54483eac494708c0f072b1f09`;完整 indices 是后续唯一来源。
 - P0-B 不实例化、读取或评估 official `train=False` dataset;配置表 `docs/P0B_CONFIG_TABLE.md` 未修改。
+
+---
+
+## 8f. MAIN-01 主实验：结果落地与两份结果前文档的归档
+
+**记录时间：** 2026-08-02。**执行 commit：** `32edce6`（624/624，零失败，零缺格）。
+
+### 8f.1 两份结果前文档的版本与 SHA
+
+两份文件于 2026-07-29 撰写完成，其 SHA-256 于同日提交至独立仓库
+`github.com/yunshen0126/prereg-timestamps` commit `d73beba`，GitHub 服务端时间戳可由第三方核验。
+
+| 版本 | 说明 | ADDENDUM_03 | CODE_DELTA |
+|---|---|---|---|
+| V0 | 撰写完成版，**即被时间戳覆盖的版本** | `7f02f9ba8c0a8f02708cabb048dce12c6f9b001a6fe3758a6b3c7a02e64c2beb` | `9918623eaed4a1dcec7efe0acd03d78a67302681e5bf331c8f2589e9d79400d4` |
+| V1 | 填充后、自指 SHA 回填前 | `9040e032e1b12264d34d9a400c821c96b12bfba679a56a3ec97795c5357ae8ca` | `00b8501b0ab22d74413972306e4de67e8afaa1a7e3ad2bc12f063fc73e582477` |
+| V2 | 自指 SHA 回填后，**即本 commit 收录的版本** | `1e5a15c1d37b3650e55c4cbd243b9fba4e41c54f1c7bd804b1521c0d7c241509` | 同 V1（本件无自指 SHA 行） |
+
+V0 两份原件留存于 `docs/prefill_snapshot/`，可直接与时间戳记录比对。
+
+**差异范围：** V0→V1 的全部改动由 `docs/prefill_snapshot/*.fill.diff` 两个 unified diff 界定。
+ADDENDUM_03 的改动限于 §8 情形 S7 第 1 条（回填 `FORMAL_CONFIG` 具体数值，
+并删除该条下要求回填的指令引用块）；CODE_DELTA 的改动为在文末追加 §5.2（纯追加，无既有行改动）。
+判据、口径、表述约束无一处变动。
+
+`MAIN_PREREG_ADDENDUM_03_CONTINGENCY.md` 的自指 SHA 记录值为 V1 的 SHA，
+故工作区版本直接 `sha256sum` 必然不匹配，与 `MAIN_PREREG_01.md` 同理，
+唯一有效的校验是 `git show <commit>:<file> | sha256sum` 并与 V1 值比对。
+
+### 8f.2 两份文档长期位于版本控制之外
+
+两份文件自 2026-07-29 撰写至本次 commit 期间，**仅存在于本地工作副本，从未进入 git 历史**
+（`git log --all -- '*ADDENDUM_03*' '*CODE_DELTA*'` 为空，且不受 `.gitignore` 影响）。
+期间其完整性由外部时间戳而非 git 保障。本次 commit 前已核验本地副本、云端副本与
+时间戳记录三方 SHA 逐位一致。此事实解释了 commit 时间晚于时间戳时间三日。
+
+### 8f.3 代码惰性检验（`CODE_DELTA` §5.1）的执行结果
+
+判据 A 与 B 均通过，§7 的数值惰性主张不撤回。详见 `CODE_DELTA_68dff0b_32edce6.md` §5.2。
+归档侧 16 格重算得 `P_G' = +3.50 [+2.14, +4.86]`，与 §5.1 记录值逐位相同。
+
+---
+
+## 8g. 勘误（erratum）九条
+
+### 8g.1 §8e.2 两格由聚合前舍入产生
+
+与 `P0B_PREREG_ANALYSIS_PLAN.md` §3 规定的口径（聚合层不做任何中间舍入）不符：
+
+| 量 | 原记录 | 正确值 |
+|---|---|---|
+| `P_R` @ R_high | +0.07 | **+0.08** |
+| ④ axis @ R_low | −0.03 | **−0.02** |
+
+成因：逐 seed 值先舍到两位再平均。两格均属 P0-B，**不出现在论文中**。
+
+### 8g.2 §12.1 GRU 成本的系统性低估
+
+预注册假设 GRU 单 run 耗时为 Mamba 的 0.70×，**实测 1.32×**
+（cifar10 R_high：GRU ~9,518 s vs Mamba ~7,200 s）。全批墙钟约 95–100 h，
+预注册估 89 h，差额几乎全部来自此项。
+
+### 8g.3 `MAIN_PREREG_01.md` §2.3 内的失效交叉引用
+
+§2.3 所引「§9.2」应读作「§5.2」。该文件受 SHA 门控不得修改，
+详见 `CODE_DELTA_68dff0b_32edce6.md` §4.3。
+
+### 8g.4 16 个增强敏感性 run 已迁至 `outputs_aug16`
+
+详见 `CODE_DELTA_68dff0b_32edce6.md` §4.1。该批目录为本次判据 C 的归档侧数据源。
+
+### 8g.5 批次 D 的复现基线 commit
+
+为 `02981d9`，**非 `8055759`**。详见 `CODE_DELTA_68dff0b_32edce6.md` §4.2。
+
+### 8g.6 CIFAR-10 划分 SHA 的誊写错误
+
+交接备忘 `HANDOFF.md` §6.2 将 `P0B_CIFAR10_VAL_SPLIT_FROZEN.json` 的 SHA 尾部
+写作 `…0c072b1f09`，run metadata 的 `split_source_sha256` 实为 `…c0f072b1f09`
+（`c` 与 `0` 位置互换，属誊写时的数位转置）。前缀 `e28719c9` 一致。
+冻结文件本身的完整 SHA 见本节下方校验记录；runner 按完整 SHA 门控且全批 `git_dirty = False`，
+故为交接文档的誊写错误，非产物不符。
+
+冻结文件实测 SHA-256：`e28719c9154bfcdce9c89ab5c91529eb27403ce54483eac494708c0f072b1f09`
+
+### 8g.7 分析脚本对 GRU 臂输出了投票行
+
+`MAIN_PREREG_ADDENDUM_03_CONTINGENCY.md` §7 描述分析脚本「保留逐数据集 M1/M2
+但不输出投票与 M3」，但 `--backbone gru` 的实际 latex 输出含
+`Proposition A & \multicolumn{3}{l}{not evaluable (1/5)}` 一行。
+该行是五数据集投票规则套用于单数据集臂产生的过滤器伪影。
+**论文未采用该行**（`sections/results.tex` §6.8 只报逐数据集 M1/M2，不报投票、不报 M3）。
+脚本行为与文档描述的偏差在此记录，脚本本身未修改（批次已结束，改动不影响已产出结果）。
+
+### 8g.8 `_compare_metadata` 的 legacy 豁免未按 `git_commit` 收口
+
+详见 `CODE_DELTA_68dff0b_32edce6.md` §3.4。不影响主实验 624 个 run
+（其 `augmentation = main_uniform`，永不进入该分支），待后续收紧。
+
+### 8g.9 `run_p0b_feasibility.py` 第 740–741 行 `set_seed` 连写两遍
+
+无害重复调用，第二次调用不改变 RNG 状态相对第一次的结果。记录待清理。
+
+---
+
+## 8h. 论文侧的对应关系
+
+| 论文位置 | 数据来源 |
+|---|---|
+| Table 5 completeness | `analyze_main624.py --emit latex`，commit `32edce6` |
+| Table 6 contrasts、Figure 1 | 同上（Mamba） |
+| Table 7 criteria、Table 8 ceiling、Table 9 exploratory | 同上 |
+| Table 10 GRU | `analyze_main624.py --backbone gru --emit latex` |
+| Table 11 inertness | `CODE_DELTA` §5.2 |
+
+论文触发的结果情形（`ADDENDUM_03` §8.1）：S1、S3、S5、S9 触发；S2、S4、S6 一致性、S7、S8 未触发。

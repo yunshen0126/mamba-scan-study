@@ -1,0 +1,20 @@
+--- docs/prefill_snapshot/ADDENDUM_03.prefill.md	2026-08-02 17:46:19.115741186 +0800
++++ MAIN_PREREG_ADDENDUM_03_CONTINGENCY.md	2026-08-02 18:12:54.852767924 +0800
+@@ -228,12 +228,11 @@
+ 
+ 1. **不得**主张效应对未测配置成立。全部 624 个 run 的固定边界为：
+    32×32 输入、Mamba 骨干（GRU 仅 cifar10）、100 epoch，
+-   以及 `FORMAL_CONFIG` 中硬编码的模型宽度、层数与 batch 配置。
+-
+-   > **落盘前须核实：** 上一行中除"32×32 输入"与"100 epoch"外的具体数值，
+-   > 必须从任一已完成 run 的 `metadata.json` 的 `training_config` 字段**逐字读出后填入**，
+-   > 不得沿用本件草稿中的任何数值。本件起草者未读取过 `metadata.json`，
+-   > 故草稿中不列具体数字。
++    以及 FORMAL_CONFIG 中硬编码的模型宽度 d_model = 256（四组各宽 64）、
++    层数 n_layers = 2、micro_batch = 128 / accum_steps = 1 / effective_batch = 128。
++    参数量 grid8 为 282,122、grid32 为 282,890。
++    以上数值逐字读自 outputs_main/p0b_cifar10_main_uniform_mamba_GEO_SG1_R_{low,high}_seed0
++    的 metadata.json，读取时点为 2026-08-02，执行 commit 32edce6。
+ 2. **不得**主张五个数据集构成任务空间的代表性样本。它们是便利样本，
+    其中三个来自同一个 MedMNIST 家族，共享成像模态与预处理管线。
+ 3. **不得**把 ②③④ 三条同时显著并列计数为三项独立支持——
