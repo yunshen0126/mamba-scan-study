@@ -296,13 +296,22 @@ def _complete_cells(
     return {(record.exp_id, record.reliance, record.seed): record for record in group}
 
 
+# CAP-01 臂的产物目录带宽度后缀 (run_p0b_feasibility.py:623)。
+# 用模块级变量而非逐层传参: 本文件是单次执行的命令行工具, 且 d_model 只影响
+# 目录名解析, 不进入任何统计计算。main() 在解析参数后立即设置它。
+_D_MODEL = 256
+
+
 def _expected_run_directory(
     runs_root: Path, dataset: str, backbone: str, augmentation: str, exp_id: str, reliance: str, seed: int
 ) -> Path:
+    # 与 run_p0b_feasibility.py:623 的 width_suffix 逻辑逐字一致。
+    # legacy 命名空间不带宽度后缀, 且 legacy 只在 d_model=256 下存在。
+    width_suffix = "" if _D_MODEL == 256 else f"_d{_D_MODEL}"
     if dataset == "cifar10" and backbone == "mamba" and augmentation == "p0b_legacy":
         name = f"p0b_{exp_id}_{reliance}_seed{seed}"
     else:
-        name = f"p0b_{dataset}_{augmentation}_{backbone}_{exp_id}_{reliance}_seed{seed}"
+        name = f"p0b_{dataset}_{augmentation}_{backbone}_{exp_id}_{reliance}_seed{seed}{width_suffix}"
     return runs_root / name
 
 
@@ -656,11 +665,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--backbone", choices=BACKBONES, action="append", dest="backbones")
     parser.add_argument("--augmentation", choices=AUGMENTATIONS, default="main_uniform")
     parser.add_argument("--emit", choices=("markdown", "latex"), default="markdown")
+    parser.add_argument("--d-model", type=int, default=256,
+                        help="产物目录名的宽度后缀; 256 时无后缀, 与既有 624 run 一致")
     return parser.parse_args(argv)
 
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = parse_args(argv)
+    global _D_MODEL
+    _D_MODEL = args.d_model
     backbones = tuple(args.backbones) if args.backbones else ("mamba",)
     records = load_records(args.runs_root)
     if args.emit == "latex":
