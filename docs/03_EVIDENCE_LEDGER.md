@@ -626,7 +626,7 @@ grid8 单 run 约 1690 s（28.2 min），grid32 约 6995 s（116.6 min）；5 �
 | V0 | 撰写完成版，**即被时间戳覆盖的版本** | `7f02f9ba8c0a8f02708cabb048dce12c6f9b001a6fe3758a6b3c7a02e64c2beb` | `9918623eaed4a1dcec7efe0acd03d78a67302681e5bf331c8f2589e9d79400d4` |
 | V1 | 填充后、自指 SHA 回填前 | `9040e032e1b12264d34d9a400c821c96b12bfba679a56a3ec97795c5357ae8ca` | `00b8501b0ab22d74413972306e4de67e8afaa1a7e3ad2bc12f063fc73e582477` |
 | V2 | 自指 SHA 回填后，**即本 commit 收录的版本** | `1e5a15c1d37b3650e55c4cbd243b9fba4e41c54f1c7bd804b1521c0d7c241509` | 同 V1（本件无自指 SHA 行） |
-
+| V3 | CODE_DELTA §9 口径更正后（见 §8g.10） | 不适用 | `9f014f514e861e3d3bf92200c3f8f2ddb32749326fbe3d26e83f3cea48ca1ac0` |
 V0 两份原件留存于 `docs/prefill_snapshot/`，可直接与时间戳记录比对。
 
 **差异范围：** V0→V1 的全部改动由 `docs/prefill_snapshot/*.fill.diff` 两个 unified diff 界定。
@@ -647,7 +647,7 @@ ADDENDUM_03 的改动限于 §8 情形 S7 第 1 条（回填 `FORMAL_CONFIG` 具
 
 ### 8f.3 代码惰性检验（`CODE_DELTA` §5.1）的执行结果
 
-判据 A 与 B 均通过，§7 的数值惰性主张不撤回。详见 `CODE_DELTA_68dff0b_32edce6.md` §5.2。
+判据 A 与 B 均通过，§7 的数值惰性主张不撤回。详见 `CODE_DELTA_68dff0b_32edce6.md` §9。
 归档侧 16 格重算得 `P_G' = +3.50 [+2.14, +4.86]`，与 §5.1 记录值逐位相同。
 
 ---
@@ -722,6 +722,130 @@ ADDENDUM_03 的改动限于 §8 情形 S7 第 1 条（回填 `FORMAL_CONFIG` 具
 | Table 6 contrasts、Figure 1 | 同上（Mamba） |
 | Table 7 criteria、Table 8 ceiling、Table 9 exploratory | 同上 |
 | Table 10 GRU | `analyze_main624.py --backbone gru --emit latex` |
-| Table 11 inertness | `CODE_DELTA` §5.2 |
+| Table 11 inertness | `CODE_DELTA` §9 |
 
 论文触发的结果情形（`ADDENDUM_03` §8.1）：S1、S3、S5、S9 触发；S2、S4、S6 一致性、S7、S8 未触发。
+
+---
+
+## 8i. 去饱和后续臂：探针执行与不予执行的决定
+
+**记录时间：** 2026-08-02/03。**性质：事后的、未预注册的探索性检查。**
+
+### 8i.1 动机（事后）
+
+MAIN-01 中 M1 失败的四个数据集在高负载档全部触发天花板标记（§8f）。
+由此产生一个假设：那四个零可能是训练侧饱和造成的测量失败，而非效应的真实缺席。
+论文 `sections/discussion.tex` 已将该假设标注为事后的、未预注册的考量。
+
+为把它变成可测量的，曾计划一个"去饱和后续臂"：降低 `d_model` 使训练准确率压至
+95% 以下，重跑五个数据集的高负载档（260 run），并以 CIFAR-10 作阳性对照
+（它是全实验唯一 ② 区间排除零的数据集，若降容量后其效应亦消失，则操纵毁掉了
+测量能力，本臂作废）。该臂的预注册草稿已起草，**但未冻结、未时间戳、未执行**。
+
+### 8i.2 探针结果
+
+先执行探针以确定 `d_model` 取值：五个数据集 × `GEO_SG1` × `R_high` × seed0，
+`d_model ∈ {128, 64}`，产物在 `/root/autodl-tmp/outputs_probe_desat`。
+`d_model = 256` 档直接读取 `outputs_main` 既有 run。
+探针经与主实验相同的 runner 执行（仅额外传 `--d-model` 与 `--run-root`）。
+
+单格尾窗 train accuracy（%）：
+
+| dataset | d256 | d128 | d64 | 降幅 d256→d128 |
+|---|---:|---:|---:|---:|
+| cifar10 | 96.41 | 80.56 | 70.12 | **−15.85** |
+| organamnist | 99.99 | 99.90 | — | **−0.09** |
+| organcmnist | 99.91 | 98.90 | — | −1.01 |
+| organsmnist | 97.27 | 93.51 | — | −3.76 |
+| eurosat | 99.78 | 97.68 | — | −2.10 |
+
+（`d64` 仅跑了 cifar10；见 §8i.3 的决定。以上为 `GEO_SG1/seed0` 单格值，
+**不是** §8f 天花板表所用的结构组中位数，两者不是同一个量。）
+
+### 8i.3 探针结论：降容量是错误的杠杆
+
+宽度砍半，OrganAMNIST 的训练准确率只掉 0.09 个点，而 CIFAR-10 掉了 15.85 个点。
+器官数据集的饱和是**任务属性**（28×28 上采样的低分辨率灰度图，训练集
+一万二至三万五）而非容量过剩。外推至 `d64`：CIFAR-10 已跌至 70.12（欠拟合），
+器官数据集预计仍在 99% 以上。
+
+因此**不存在一个 `d_model` 能同时满足**该臂预注册草稿的 D0（CIFAR-10 阳性对照存活）
+与 D2（目标数据集训练准确率低于 95%）。降容量路径被探针自身证伪。
+
+### 8i.4 不予执行的决定，及其替代
+
+**该臂不予执行。** 决定的依据不是机时，而是主实验数据中已存在一个更强的反驳，
+且该反驳不携带事后动机：
+
+对四个 M1 失败的数据集，在高负载档、同一批 run、同一个格内：
+
+| dataset | 十三条件 val 跨度 (pp) | 结构对比 ① | 对比 ② |
+|---|---:|---|---|
+| organamnist | 2.61 | +1.88 [+1.42, +2.34] | −0.12 [−0.67, +0.43] |
+| organcmnist | 2.75 | +1.99 [+0.84, +3.14] | +0.47 [−0.42, +1.37] |
+| organsmnist | 5.90 | +4.53 [+3.13, +5.93] | +0.23 [−1.31, +1.76] |
+| eurosat | 1.94 | +1.34 [+0.88, +1.81] | +0.40 [−0.04, +0.85] |
+
+泛化端未触顶（跨度 1.94–5.90 pp），且装置在同格测出了 ①（区间全部排除零）。
+"训练侧天花板压制了 ②"这一说法，须额外解释它为何在同一批 run、同一负载档、
+同一输入上放过 ①。
+
+该反驳全部使用已注册、已冻结、已报告的数据，**不引入任何事后动机**，
+强于 260 个事后动机的 run。论文 `sections/limitations.tex` §Saturation 与
+`sections/discussion.tex` §Task structure 已据此改写：原先"本数据不可证伪"的
+表述改为"部分可由本数据证伪，且证据不支持该假设"。
+
+### 8i.5 留存
+
+- 探针产物：`/root/autodl-tmp/outputs_probe_desat`（6 个 run）
+- 探针脚本：`mamba_scan_study/analysis/probe_desat.py`
+- 核验脚本：`mamba_scan_study/analysis/ceiling_argument_check.py`
+- 该臂预注册草稿**未冻结、未时间戳、未进入版本控制**，仅留存于本地工作副本。
+  若日后重启该臂，须以新的预注册重新起草并重新时间戳，不得沿用该草稿声称事前性。
+- `run_p0b_feasibility.py` 因探针新增 `--d-model`、`--run-root`、`--no-download`
+  三个参数。默认值下与改动前逐字等价，已实测：`--d-model 256` 时
+  `parameter_count = 282890`、
+  `nominal_flops_equality_signature = c5ca93463cbbaa7bb6df0eccfffa24b15bf719b6a820b328e7c19a387eeb6ae3`，
+  与既有 624 个 run 相同，故不构成新的代码差异，无需新增 CODE_DELTA。
+
+---
+
+## 8g.10 CODE_DELTA §5.2 初版差值表的口径错误（勘误第十条）
+
+commit `873e2bb` 收录的 `CODE_DELTA_68dff0b_32edce6.md` §5.2 中，
+判据 C 的 16 格差值由**已舍入到两位的显示值相减**得出，与
+`P0B_PREREG_ANALYSIS_PLAN` §3 规定的"聚合层不做中间舍入、仅显示层舍入"不符。
+
+论文 `sections/results.tex` §6.9 与 Table 11 已同步更正。
+该节在本次修正中一并改名为 §9（原编号 §5.2 排在 §8 之后，编号顺序有误）。
+
+六格差 0.01：GEO_DIV seed3、GEO_SG1 seed0、RND_D1 seed0 与 seed3、
+RND_S1 seed0 与 seed1。跨度由 `−0.23 ~ +0.08` 更正为 **`−0.24 ~ +0.09`**；
+`RND_S1` seed1 由 `−0.23` 更正为 **`−0.24`**；
+归档侧 `P_R'` 区间上界由 `+1.58` 更正为 **`+1.57`**。
+
+**判据 A 与 B 的判定结论、`P_G'` 与 `P_R'` 的点估计均未改变。**
+
+该错误由新增的可复现脚本 `mamba_scan_study/analysis/inertness_check_16.py` 发现。
+论文 `sections/results.tex` §6.9 与 Table 11 已同步更正。
+
+---
+
+## 8j. 分析与发车脚本纳入版本控制
+
+MAIN-01 的五张表、Figure 1 与代码惰性检验此前由仅存于数据盘的脚本生成，
+不在版本控制内，构成论文"released in full"主张的实质缺口。现纳入仓库：
+
+| 脚本 | 用途 | 原位置 |
+|---|---|---|
+| `mamba_scan_study/experiments/main624_launch.py` | 624 run 发车器（含 preflight） | `/root/autodl-tmp/main_launch/` |
+| `mamba_scan_study/analysis/analyze_main624.py` | 五张表（Table 5–9） | `/root/autodl-tmp/analysis/` |
+| `mamba_scan_study/analysis/plot_forest.py` | Figure 1 | 同上 |
+| `mamba_scan_study/analysis/regress_main624_p0b.py` | P0-B 回归（48 断言） | 同上 |
+| `mamba_scan_study/analysis/inertness_check_16.py` | 代码惰性检验（CODE_DELTA §5.1） | 新增 |
+| `mamba_scan_study/analysis/probe_desat.py` | 去饱和探针（§8i） | 新增 |
+| `mamba_scan_study/analysis/ceiling_argument_check.py` | 天花板论证核验（§8i.4） | 新增 |
+
+纳入前已核验：`analyze_main624.py` 在当前 HEAD 下重跑，输出与
+`tables_mamba.txt` 逐字节一致；`regress_main624_p0b.py` 48/48 断言通过。

@@ -204,14 +204,17 @@ def verify_formal_config(
 
 
 def architecture_operator_signature(
-    grid: int, dataset: str = "cifar10", backbone: str = "mamba"
+    grid: int,
+    dataset: str = "cifar10",
+    backbone: str = "mamba",
+    d_model: int = FORMAL_CONFIG.d_model,
 ) -> dict[str, object]:
     """Path-independent formal architecture signature; no numeric Mamba FLOPs claim."""
     signature = {
         "model": "ChannelSplitBackbone",
         "dataset": FORMAL_CONFIG.dataset,
         "block_type": backbone,
-        "d_model": FORMAL_CONFIG.d_model,
+        "d_model": d_model,
         "n_layers": FORMAL_CONFIG.n_layers,
         "pos_mode": FORMAL_CONFIG.pos_mode,
         "img_size": FORMAL_CONFIG.img_size,
@@ -228,9 +231,14 @@ def architecture_operator_signature(
 
 
 def nominal_flops_equality_signature(
-    grid: int, dataset: str = "cifar10", backbone: str = "mamba"
+    grid: int,
+    dataset: str = "cifar10",
+    backbone: str = "mamba",
+    d_model: int = FORMAL_CONFIG.d_model,
 ) -> str:
-    return _sha256_bytes(_canonical_json_bytes(architecture_operator_signature(grid, dataset, backbone)))
+    return _sha256_bytes(
+        _canonical_json_bytes(architecture_operator_signature(grid, dataset, backbone, d_model))
+    )
 
 
 def _ledger_row(resolution: P0BPathResolution) -> dict[str, str]:
@@ -369,7 +377,12 @@ def build_metadata(
         micro_batch != FORMAL_MICRO_BATCH or accum_steps != FORMAL_ACCUM_STEPS
     ):
         raise ValueError("formal P0-B metadata must use frozen micro-batch 128 and accum_steps 1")
-    signature = architecture_operator_signature(resolution.grid, dataset, runtime_config.block_type)
+    signature = architecture_operator_signature(
+        resolution.grid,
+        dataset,
+        runtime_config.block_type,
+        runtime_config.d_model,
+    )
     metadata = {
         "protocol": "P0B",
         "dataset": dataset,
@@ -399,7 +412,10 @@ def build_metadata(
         "operator_signature": signature["explicit_path_control_flow"],
         "nominal_flops_method": "path-independent architecture equality signature; no absolute Mamba FLOPs estimator",
         "nominal_flops_equality_signature": nominal_flops_equality_signature(
-            resolution.grid, dataset, runtime_config.block_type
+            resolution.grid,
+            dataset,
+            runtime_config.block_type,
+            runtime_config.d_model,
         ),
         "git_commit": _git_value(["git", "rev-parse", "HEAD"], "UNKNOWN"),
         "git_dirty": bool(_git_value(["git", "status", "--porcelain"], "UNKNOWN")),
@@ -601,13 +617,19 @@ def _run_directory(
     dataset: str = "cifar10",
     augmentation: str = "p0b_legacy",
     backbone: str = "mamba",
+    d_model: int = FORMAL_CONFIG.d_model,
+    run_root: str | Path = FORMAL_RUN_ROOT,
 ) -> Path:
+    width_suffix = "" if d_model == FORMAL_CONFIG.d_model else f"_d{d_model}"
     if dataset == "cifar10" and augmentation == "p0b_legacy":
-        name = f"p0b_{exp_id}_{reliance_for_grid(grid)}_seed{training_seed}"
+        name = f"p0b_{exp_id}_{reliance_for_grid(grid)}_seed{training_seed}{width_suffix}"
     else:
-        name = f"p0b_{dataset}_{augmentation}_{backbone}_{exp_id}_{reliance_for_grid(grid)}_seed{training_seed}"
+        name = (
+            f"p0b_{dataset}_{augmentation}_{backbone}_{exp_id}_"
+            f"{reliance_for_grid(grid)}_seed{training_seed}{width_suffix}"
+        )
     if mode == "formal":
-        return FORMAL_RUN_ROOT / name
+        return Path(run_root) / name
     if not debug_root:
         raise ValueError("debug mode requires --debug-root and never writes formal results")
     return Path(debug_root) / name
@@ -623,10 +645,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--dataset", choices=tuple(DATASET_CLASS_COUNTS), default="cifar10")
     parser.add_argument("--augmentation", choices=("p0b_legacy", "main_uniform"), default="p0b_legacy")
     parser.add_argument("--backbone", choices=("mamba", "gru"), default="mamba")
+    parser.add_argument("--d-model", type=int, default=FORMAL_CONFIG.d_model)
+    parser.add_argument("--run-root", type=Path, default=FORMAL_RUN_ROOT)
     parser.add_argument("--ledger", default=str(REPO_ROOT / LEDGER_FILENAME))
     parser.add_argument("--mode", choices=("formal", "debug"), default="formal")
     parser.add_argument("--debug-root")
     parser.add_argument("--debug-epochs", type=int, default=2)
+    parser.add_argument("--no-download", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--execute", action="store_true")
     return parser.parse_args(argv)
@@ -645,6 +670,8 @@ def resolved_micro_batch(args: argparse.Namespace) -> tuple[int, int]:
 
 def _validate_cli(args: argparse.Namespace) -> None:
     resolved_micro_batch(args)
+    if args.d_model <= 0 or args.d_model % 4:
+        raise ValueError("d-model must be a positive multiple of four for channel-split branches")
     if args.dry_run and args.execute:
         raise ValueError("--dry-run and --execute are mutually exclusive")
     if not args.dry_run and not args.execute:
@@ -676,12 +703,18 @@ def run_one_cell(args: argparse.Namespace) -> str:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     runtime_config = (
-        replace(FORMAL_CONFIG, dataset=args.dataset, block_type=args.backbone)
+        replace(
+            FORMAL_CONFIG,
+            dataset=args.dataset,
+            block_type=args.backbone,
+            d_model=args.d_model,
+        )
         if args.mode == "formal"
         else replace(
             FORMAL_CONFIG,
             dataset=args.dataset,
             block_type=args.backbone,
+            d_model=args.d_model,
             epochs=args.debug_epochs,
             num_workers=0,
         )
@@ -693,6 +726,7 @@ def run_one_cell(args: argparse.Namespace) -> str:
         micro_batch,
         args.training_seed,
         num_workers=runtime_config.num_workers,
+        download=not args.no_download,
         dataset=args.dataset,
         augmentation=args.augmentation,
     )
@@ -716,6 +750,8 @@ def run_one_cell(args: argparse.Namespace) -> str:
         args.dataset,
         args.augmentation,
         args.backbone,
+        args.d_model,
+        args.run_root,
     )
     completed = validate_completed_run(
         run_directory / "final_checkpoint.pt",
