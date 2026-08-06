@@ -177,6 +177,3 @@ metadata SHA 一致），故计入"零失败"。它们不是崩溃退出，是�
 | 判定脚本 | `cap01_judge.py`（含 `--selftest`） |
 
 ---
-
-**本件 SHA-256：** `<落盘后计算并回填>`
-**记录于：** `docs/03_EVIDENCE_LEDGER.md` §8k

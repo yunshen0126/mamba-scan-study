@@ -849,3 +849,270 @@ MAIN-01 的五张表、Figure 1 与代码惰性检验此前由仅存于数据盘
 
 纳入前已核验：`analyze_main624.py` 在当前 HEAD 下重跑，输出与
 `tables_mamba.txt` 逐字节一致；`regress_main624_p0b.py` 48/48 断言通过。
+
+分六件，性质不同，分开记。合并叙述会稀释其中最实质的一件。
+
+---
+
+## (a) `PREREG_CAP_01` §9 第 3 步的自指 SHA 条款不可执行，且正确地未被执行
+
+本件 §9 第 3 步要求"回填自指 SHA"。该动作在数学上不可能：一旦把 SHA 写入文件，
+文件内容即改变，该 SHA 随即失效。文末两处占位符
+
+```
+**本件 SHA：** `<冻结后回填>`
+**带外时间戳：** `<冻结后提交至 prereg-timestamps 并回填 commit 与日期>`
+```
+
+至今未填。**这不是疏漏，未填恰恰保住了文件与带外时间戳的逐位一致。**
+
+带外记录（`yunshen0126/prereg-timestamps` 的 `2026-08-03_cap01.txt`，
+commit `f46a42e`，自报时刻 2026-08-03T08:25:27Z = 北京时间 16:25:27）所记：
+
+```
+SHA-256 of the preregistration:
+  36cc44c7394e2b23a810a5bc0d4d62bec290259935392317a0fb37458ca9b029
+    PREREG_CAP_01.md
+```
+
+2026-08-04 复算本仓库内 `PREREG_CAP_01.md` 得同一值，**逐位吻合**。
+即本件自冻结至今零字节改动。
+
+带外记录同时载明：
+
+```
+mamba-scan-study HEAD at freeze: 92cd470
+mamba-scan-study commit carrying this document: 4a5f7ed
+```
+
+故本件 §7.3 所记 `92cd470` 作为"冻结时 HEAD"是准确的；带外记录已把冻结时 HEAD
+与承载本件的 commit 分别标注，并声明后者本身不构成优先权证据。
+唯一措辞不确之处在于 §7.3 的上下文（"本臂开跑前 HEAD 须干净"）会让读者以为
+`92cd470` 是执行时的 commit，而实际执行时 HEAD 为 `4a5f7ed`（preflight 记录）
+及其后的 `68fa05d`（见 (b)）。以本条勘误澄清，**不修改本件**。
+
+带外记录另载明记录时零 CAP-01 run 已执行、输出根为空。文件系统证据与之相符：
+`/root/autodl-tmp/outputs_cap512` 出生于 16:18:02，早于记录，但当时为空目录。
+
+## (b) 本臂执行期间发生一次 commit，违反 `PREREG_CAP_01` §6
+
+### 证据链
+
+| 时刻 | 事件 | 距起跑 | 证据 |
+|---|---|---|---|
+| 16:18:59 | commit `92cd470` cap01 launcher | — | `git log` |
+| 16:22:45 | commit `4a5f7ed` 冻结 CAP-01 预注册 | — | `git log` |
+| **16:25:27** | **带外时间戳 commit `f46a42e` 自报时刻** | −14.9 s | GitHub API，见 (a) |
+| **16:25:41.926** | **发车器进程启动**（`/root/cap01.log` 出生时刻） | 0 | `stat -c %w`，硬下界 |
+| 16:25:41.9–16:25:44 | preflight 运行并通过 | +0–2 s | `cap01.log`，HEAD=`4a5f7ed`、工作区干净 |
+| ≈16:25:44 | 首批 run 落地 | +2 s | 首批 run 墙钟 8294 s，倒推自完成时刻 18:43:58 |
+| 17:16:35 | `figure2_paths_grid8.pdf` 写入仓库根目录，工作树变脏 | +50m51s | 文件 mtime |
+| 17:24:35 | `figure4_load_gating.pdf` | +58m51s | 文件 mtime |
+| 17:28:53 | `figure5_ceiling.pdf` | +1h03m09s | 文件 mtime |
+| 17:44:18 | `figure_components.pdf` | +1h18m34s | 文件 mtime |
+| 17:53:58 | `plot_distance_dist.py` 写入仓库根目录（见 (d)） | +1h28m14s | 文件 mtime |
+| 17:55:28 | `figure_distance_dist_grid32.pdf` | +1h29m44s | 文件 mtime |
+| **17:58:24** | **commit `68fa05d`** | **+1h32m40s** | `git log` |
+
+起跑时刻由 `/root/cap01.log` 的**出生时刻**（`stat -c %w` = 16:25:41.926）直接给出，
+不依赖反推——`nohup` 创建该日志即发车器进程启动，是"CAP-01 执行任何东西"的硬下界。
+
+**须记一条方法上的更正：** run 产物目录的出生时刻与其 mtime 相差 32 ms
+（`p0b_..._GEO_SG1_R_high_seed2_d512`：出生 18:43:58.153958，mtime 18:43:58.185937），
+说明 **runner 在 run 结束时才创建产物目录**，而非开跑时。故产物目录的时间戳
+只能定位 run 的**结束**，不能定位其开始。本条早先曾据此反推起跑，结论虽与
+日志出生时刻一致（相差约 2 秒），但推理路径不成立，在此更正。
+
+### 变更范围
+
+`68fa05d` 单独包含的变更（`git show --name-status 68fa05d`）：
+
+```
+A       mamba_scan_study/analysis/plot_ceiling.py
+A       mamba_scan_study/analysis/plot_components.py
+A       mamba_scan_study/analysis/plot_distance_dist.py
+A       mamba_scan_study/analysis/plot_load_gating.py
+A       mamba_scan_study/analysis/plot_paths.py
+```
+
+五个文件状态全部为 `A`（新增），**无修改、无删除**。
+`PREREG_CAP_01.md` 与 `.gitattributes` 属 `4a5f7ed`，不在本次 commit 内。
+
+`mamba_scan_study/analysis/` 不是 package（无 `__init__.py`），
+`mamba_scan_study/experiments/` 下无任何脚本 import 之
+（`grep -rn "analysis" mamba_scan_study/experiments/*.py` 无 import 命中）。
+故本臂执行路径逐位未变：操纵量 `d_model`、runner、模型定义、数据装载、
+冻结路径库均未受影响。
+
+### 记录后果
+
+全部 `104` 个 run 的 metadata 记 `git_commit = 68fa05d`、
+`git_dirty = True`，包括时间上早于该 commit 的那些 run——即 run 记录的 commit
+不是其开跑时的 commit。均匀性由 `cap01_finalize.py` 核实：
+`全部 104 个 run 的 git_commit 与 git_dirty 完全一致 (68fa05d / True)，由 cap01_finalize.py 于 2026-08-06 17:46 核实`。
+
+主实验对照：`outputs_main` 的 run 记 `git_commit = 32edce6`、`git_dirty = False`。
+
+### 处置
+
+**不补救。** 理由三条：
+
+1. `ADDENDUM_03` §9 禁止因此类事由发起重跑；
+2. 跑批期间禁止 commit，`git_dirty` 无法回填；
+3. **不清理未跟踪文件**——现清理将使其后的 run 记为 `False`，产生半 True
+   半 False 的不均匀记录，劣于当前的均匀状态。清理留待本臂结束后。
+
+### 成因与教训
+
+本账本 §8e.1 已记录过同一缺陷。`main624_launch.py` 为此设有 canary
+（第 324–328 行的 outputs 忽略检查、第 525–527 行的 canary `git_dirty` 断言），
+主实验因而干净。`cap01_launch.py` 仅在第 97–100 行作一次性 preflight
+（`git status --porcelain` 非空即中止），**未继承该 canary**，故缺陷复发。
+
+**可推广的教训：发车器的 preflight 是一次性的，不覆盖执行期间。**
+凡长批次，须有周期性复查或对产物目录的写入隔离；仅靠开跑前一次检查不足以
+保证批次内 provenance 的一致。
+
+---
+
+## (c) 起跑时刻记录错误，且 metadata 无时间字段
+
+`HANDOFF_2026-08-03` §5 记"8 月 3 日 18:35 起跑"，与 (b) 的证据不符。
+实际起跑为 **16:25:41.926**（发车器进程启动），差 2 小时 09 分。
+18:35 接近第一批 run 的完成时刻（18:43:58），推测系当时据日志首次出现输出而记。
+
+CAP-01 的 metadata 不含任何时间字段
+（`[k for k in m if 'time'/'start'/'stamp'/'date' in k.lower()]` 返回空列表），
+故本臂的起止时刻只能由 `cap01.log` 与文件系统 mtime 重建，且 mtime 会被任何
+后续访问改写。**后续实验的 runner 应记录 UTC 起止时刻**——本条的重建工作
+本不必要。
+
+---
+
+## (d) 仓库根目录的 `plot_distance_dist.py` 为弃用草稿
+
+两份副本在取值口径上不同，不是格式差异：
+
+| 副本 | `d_x` / `d_y` / `AxisBias` 取自 |
+|---|---|
+| 仓库根目录（未跟踪，mtime 17:53:58） | `aux["d_x"]`，四条路径合并 |
+| `mamba_scan_study/analysis/`（已跟踪，属 `68fa05d`） | `aux["per_path"][0]`，仅 L1 |
+
+已跟踪版本于 2026-08-04 重跑，与 `P0B_PREREG_FREEZE_L_AUC.md` 的八项冻结值
+**逐位一致**：
+
+```
+mean 18.140625  p50 15.000000  p90 35.000000  p95 41.000000  max 66.000000
+d_x 4.760081    d_y 31.521169  AxisBias -1.890395
+```
+
+`AxisBias = -1.890395` 与论文所报 `-1.890`（`method.tex` §subsec:lmto、
+`results.tex` §subsec:res_exploratory）相符。C5 判据三项亦复现：
+mean +9.94%、p50 −9.09%、p90 +9.38%，全部在 ±10% 内，与论文所报三个 margin 一致。
+
+四条合并口径不可能得到该值：L3/L4 为 L1/L2 的转置，轴向偏置相互抵消，
+合并后 `AxisBias` 趋近 0（本次实测 Arbitrary 族的合并值为 −0.0238，可作量级参照）。
+
+**论文所用为已跟踪版本。** 直接证据：论文 Figure 3 的产物
+`figure_distance_dist_grid32.png` 与已跟踪版本 2026-08-04 重跑所得
+`dd_check.png` 的 SHA-256 完全相同：
+
+```
+59bb554e206245e673376fbfcc366387f2ce11892f753efcc3bd99462439956a
+```
+
+根目录副本待本臂结束后删除。删除动作记于本条，不另立勘误。
+
+---
+
+## (e) 判定结果不追加进本件，另立 `CAP01_RESULTS.md`
+
+本件 §9 第 5 步要求"本臂全部 run 完成后，判定结果追加至本件 §10"。
+**该步骤不予执行，改以另立文件的方式履行其实质。**
+
+理由：本件当前 SHA-256 `36cc44c7394e2b23a810a5bc0d4d62bec290259935392317a0fb37458ca9b029`
+与带外时间戳所记逐位相同（见 (a)）。**向本件追加任何一个字节，该一致性即断裂**，
+而这一致性是目前证明"判据自冻结后零改动"的唯一直接证据，也是本臂
+"事前冻结判据"这一（本已弱于 MAIN-01 的）主张的全部依托。
+
+处理：新建 `CAP01_RESULTS.md`，开头载明所依据的冻结文件及其 SHA
+（`PREREG_CAP_01.md` @ `36cc44c7...`）与带外时间戳 commit（`f46a42e`），
+随后写 C0–C3 判定。`PREREG_CAP_01.md` **永久保持零字节改动**，
+文末两处占位符永久保留其占位状态，不填。
+
+**这是对本件 §9.5 字面的偏离，如实记录于此。** 偏离方向为更严：
+§9.5 的目的是使判定结果与判据可对照，另立文件同样达成该目的，
+且额外保住了冻结文件与带外时间戳的逐位一致。
+
+论文中每一处引用本臂结果的位置，除 §5 第 4 条要求的事后动机标注外，
+引用对象为 `CAP01_RESULTS.md`，其中回指冻结文件的 SHA。
+
+## (f) 带外时间戳与执行的先后：由第三方观测确立
+
+| 事件 | 北京时间 | 证据性质 |
+|---|---|---|
+| 带外记录 commit `f46a42e` | 2026-08-03 16:25:27 | 提交者自报（本地时钟） |
+| **GitHub 服务端观测到 PushEvent** | **2026-08-03 16:25:30** | **第三方观测** |
+| 发车器进程启动（`/root/cap01.log` 出生） | 2026-08-03 16:25:41.926 | 文件系统 |
+
+推送早于执行 **11.9 秒**。取证于 2026-08-04：
+
+```
+PushEvent 2026-08-03T08:25:30Z
+PushEvent 2026-07-29T00:46:11Z
+CreateEvent 2026-07-29T00:44:25Z
+```
+
+（GitHub Events API，`/repos/yunshen0126/prereg-timestamps/events`；
+原始响应存于 `push_event_raw.json`，SHA-256 见同名 `.sha256`。
+**GitHub 的公开事件保留期约 90 天，2026 年 11 月初之后该查询将返回空**，
+故上述取证不可重现，以存档为准。）
+
+commit 自报时刻与推送观测时刻相差 3 秒，二者自洽。
+
+**先后关系由此不依赖提交者的时钟**：无论本地时钟是否准确，GitHub 在
+2026-08-03T08:25:30Z 已持有该文件的哈希记录，而本机在其后 11.9 秒才启动发车器。
+
+**但 11.9 秒的余量仍窄，本条不以余量为卖点。** 真正承重的是三项：
+(i) 带外记录自陈"记录时零 CAP-01 run 已执行、输出根为空"，与文件系统证据相符；
+(ii) 冻结文件 SHA 与记录所载逐位吻合，证明其后零改动；
+(iii) 判据 C0–C3 全文在该文件内，故判据内容自推送时刻起即固定且可公开验证。
+
+若审稿人以余量之窄质疑，正确的回应是指向 (i)(ii)(iii) 与第三方观测的性质，
+而非争辩秒数。本条如实记录余量之窄，不作粉饰。
+
+---
+
+## (g) 本臂的判定结果与其记录位置
+
+C0 在两个数据集上均不通过；C1/C2/C3 如实报告但不予解释，且不得用于回应容量意见。
+判定结果不追加进 `PREREG_CAP_01.md`（见 (e)），载于 `CAP01_RESULTS.md`。
+
+一并记录三件与本账本相关的事实：
+
+1. **104 / 104，零失败。** "零失败"指全部 run 跑满 100 epoch 并通过
+   `completed.json` + `final_checkpoint.pt` + metadata SHA 三重校验。它不表示
+   全部 run 都学到了东西：15 个 run 训练未收敛，训练与验证准确率同时停在常数
+   输出水平。该事实记于 `CAP01_RESULTS.md` §4，未作任何排除处置。
+
+2. **`cap01_judge.py` 的一处设计疏忽。** 该脚本在 C0 不通过时仍打印 §4.1–§4.3
+   为 C1/C2/C3 预设的结论措辞，仅在每行末尾挂 `[C0 未通过, 不予解释]` 标记。
+   那些措辞以 C0 通过为前提，C0 不通过时全部无效。脚本本应整段抑制。
+   记于此以防后续引用其输出时误抄。
+
+3. **`cap01_finalize.py` 第 5 节的告警已过期。** 该节报告 `PREREG_CAP_01.md`
+   的两处占位符未回填并建议停止流程。依 (a)，未回填是正确状态——自指 SHA
+   无法回填，不填恰恰保住了与带外时间戳的逐位一致。该告警应忽略。
+
+---
+
+## 附：论文正文的对应处理
+
+于 Limitations 或补充材料的可复现性段落加一句，**不进摘要、不进结论、
+不进任何主张句**（`ADDENDUM_03` §2）：
+
+> The capacity-robustness runs record a repository commit made after the batch
+> had begun; that commit added read-only figure-generation scripts and left the
+> execution path unchanged. See the evidence ledger, entry 11.
+
+不展开、不解释、不辩护。指向 ledger 即可。
