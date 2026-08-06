@@ -1,0 +1,8 @@
+9990920084d0b85af5a2ae58987817f89e112f142a61571cc90157a318044327  figure5_ceiling.pdf
+25aee072145151a34c52ea81aa920004dc3ad7f4060636009fb696a47a09bfc9  figure5_ceiling.png
+21ef319e2130f91d5fa6a31a36d520f389425c24728389540b1ffd7c96ec3f6f  values_new70.tsv
+# 注: PDF 内嵌 CreationDate, 同一数据每次生成哈希不同; provenance 以 PNG 为准。
+# 论文 zip 内的 figure5_ceiling.pdf 为
+#   6c68a60f8fb220876fb17f02dd28362ae454949251f8a39b6d49c37da498e6cc
+# 与本目录的 9990920084d0... 内容相同 (两次运行的 PNG 均为 25aee072...,
+# 且 values_new.tsv 与 values_new70.tsv 逐位相同)。
