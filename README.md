@@ -1,150 +1,188 @@
-# CIFAR-10 行遮掩重建辅助实验
 
-测试核心命题：**给行扫描视觉模型加一个"遮行重建"辅助损失，能否提升性能；
-且推理时丢掉辅助头，零额外开销。**
+# Separating path geometry from branch heterogeneity in Vision Mamba
 
-对照组：
-- `baseline`  纯行扫描，无辅助（基线）
-- `row_aux`   **你的方法**：遮整行 + 重建（测垂直）
-- `col_aux`   对照：遮整列 + 重建（测水平，应帮助更小 → 证明垂直专属）
+Code, preregistrations and analysis for a controlled study of scan order in
+vision state-space models.
 
----
+**The question.** Multi-direction scanning is credited with improving access to
+two-dimensional structure. The comparison behind that credit — one scan path
+against `k` paths at fixed capacity — moves two things at once: geometric
+complementarity, and the mere fact that the branches differ. This repository
+holds an experiment that separates them, by adding the control arm the
+literature we reviewed does not run: `k` distinct **arbitrary** permutations,
+matched to the geometric set in path count and in capacity, carrying no spatial
+structure.
 
-## 一、环境安装（Windows + 3060）
-
-```bat
-:: 建议先建一个干净的 conda 环境
-conda create -n cifar python=3.10 -y
-conda activate cifar
-
-:: 装 PyTorch（CUDA 版，3060 用 cu121 即可；以官网为准）
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-
-:: 装其余依赖
-pip install numpy
-```
-
-验证 GPU 可用：
-```bat
-python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
-```
-应输出 `True NVIDIA GeForce RTX 3060`。
+**The headline.** The arbitrary multi-path gain is not resolved from zero in any
+of the ten dataset-by-load cells, with point estimates inside `[-0.16, +0.17]`
+percentage points. The difference between the two gains is resolved on one
+dataset of five, so the registered proposition fails its own decision rule. The
+contribution is a missing comparison and a reporting norm, not an effect.
 
 ---
 
-## 二、CIFAR-10 数据：在哪下、放哪里
+## Read this first if you are reviewing the paper
 
-### 方式 A（推荐，最省事）：让程序自动下载
-**什么都不用做**。第一次运行 `run.py` 时会自动下载 CIFAR-10 到 `data/` 目录，
-约 170MB，下完后存到 `data/cifar-10-batches-py/`。之后不再重复下载。
+| You want | Go to |
+|---|---|
+| The registered criteria, fixed before any run | [`MAIN_PREREG_01.md`](MAIN_PREREG_01.md) |
+| What we committed to say for each possible outcome | [`MAIN_PREREG_ADDENDUM_03_CONTINGENCY.md`](MAIN_PREREG_ADDENDUM_03_CONTINGENCY.md) |
+| The statistical plan | [`P0B_PREREG_ANALYSIS_PLAN.md`](P0B_PREREG_ANALYSIS_PLAN.md) |
+| Every erratum found during the study, including the ones that reflect badly on us | [`docs/03_EVIDENCE_LEDGER.md`](docs/03_EVIDENCE_LEDGER.md) |
+| External timestamps of the criteria hashes | [`yunshen0126/prereg-timestamps`](https://github.com/yunshen0126/prereg-timestamps) |
+| The capacity arm that failed its own registered gate | [`CAP01_RESULTS.md`](CAP01_RESULTS.md) |
 
-### 方式 B（手动下载，适合下载慢/断网的情况）
-1. 打开官方页面下载 **CIFAR-10 python version**：
-   https://www.cs.toronto.edu/~kriz/cifar.html
-   下载文件名为：`cifar-10-python.tar.gz`
-
-2. 在本项目根目录下新建 `data` 文件夹，把 `cifar-10-python.tar.gz` 放进去：
-   ```
-   cifar_rowmask/
-   └── data/
-       └── cifar-10-python.tar.gz
-   ```
-
-3. 解压它（Windows 可用 7-Zip / WinRAR，或命令行 `tar -xzf`）。
-   解压后应得到这样的结构（**关键：必须是这个文件夹名**）：
-   ```
-   cifar_rowmask/
-   └── data/
-       └── cifar-10-batches-py/
-           ├── data_batch_1
-           ├── data_batch_2
-           ├── data_batch_3
-           ├── data_batch_4
-           ├── data_batch_5
-           ├── test_batch
-           └── batches.meta
-   ```
-   程序检测到 `data/cifar-10-batches-py/` 就会直接用，不再下载。
-
-> 如果你的数据放在别的盘/别的路径，运行时加 `--data-root D:\你的路径`。
+**Preregistration is the point of this repository, not a formality.** Criteria,
+path banks and validation splits were content-hashed and pushed to an
+independent repository before the runs began; GitHub's server-side timestamps on
+those pushes are what make "fixed in advance" checkable by someone who does not
+trust us. The evidence ledger records where we fell short of our own protocol.
 
 ---
 
-## 三、怎么跑
+## Repository layout
 
-**第 0 步：冒烟测试（30 秒，确认能跑通，不报错）**
-```bat
-python run.py --smoke
 ```
-看到每个 variant 都打印了 train/test、最后出 SUMMARY，就说明环境和代码都 OK。
-
-**第 1 步：先确认基线能学（只跑 baseline，看精度正常）**
-```bat
-python run.py --variants baseline --seeds 0 --epochs 50
-```
-CIFAR-10 上单向 GRU 行扫描基线大致能到 70%+（不会很高，因为是弱骨干，
-但只要明显高于 10%、稳定上升，就说明管线没问题）。
-
-**第 2 步：跑完整对照（你的核心实验）**
-```bat
-python run.py --epochs 100 --seeds 0 1 2
-```
-跑完看 SUMMARY 里两个关键对比：
-- `row_aux` 相对 `baseline`：**正值 = 你的方法有效**
-- `row_aux` 相对 `col_aux`：**正值 = 垂直专属性成立**（不是泛泛正则）
-
-**第 3 步（可选）：扫 λ，找最佳辅助权重**
-```bat
-python run.py --variants baseline row_aux --aux-lambda 0.1 --seeds 0 --epochs 100
-python run.py --variants baseline row_aux --aux-lambda 1.0 --seeds 0 --epochs 100
+mamba_scan_study/
+  experiments/          runners and batch launchers with preflight checks
+  analysis/             every table and figure in the paper is produced here
+  models/  data/        backbone, channel-split apparatus, path handling
+docs/
+  03_EVIDENCE_LEDGER.md the errata record
+  P0B_CONFIG_TABLE.md   the frozen configuration, field by field
+  prefill_snapshot/     pre-result snapshots of two documents, with diffs
+cap01/                  reports from the capacity arm
+*.md                    preregistrations, freeze records and stage reports
+P0B_*_FROZEN.json       the frozen path banks and validation splits
 ```
 
-**用真实 Mamba（装好 mamba-ssm 后）：**
-```bat
-python run.py --block-type mamba --epochs 100 --seeds 0 1 2
-```
+### Legacy files at the repository root
+
+`config.py`, `data.py`, `masking.py`, `model.py`, `run.py`, `train.py`,
+`verify_outdirs.py`, `run_batch_*.sh`, `requirements.txt` and `tools/` belong to
+an **earlier, unrelated experiment** on row-masking reconstruction, from which
+this repository grew. **They are not used by any result in the paper.** They are
+kept rather than deleted because the evidence ledger refers to commits that
+contain them and removing them would make that record harder to follow. Nothing
+outside `mamba_scan_study/`, `docs/`, `cap01/` and the preregistration documents
+is part of this study.
 
 ---
 
-## 四、判断标准（什么算成功）
+## Reproducing the results
 
-| 现象 | 含义 |
-|------|------|
-| `row_aux` > `baseline`（稳定，超出 std） | 方法有效 ✅ |
-| `row_aux` > `col_aux` | 垂直专属，不是泛泛正则 ✅ |
-| 推理速度 `row_aux` ≈ `baseline` | 零开销卖点成立 ✅（代码会打印 img/s）|
-| 3 个种子都同向 | 不是运气 ✅ |
+Everything in the paper is regenerated from per-run metadata. Model checkpoints
+are **not** required and are not distributed.
 
-即使提升只有 0.3~0.5% 但**稳定**且 row > col，就是一个能写的结果。
+### 1. Get the run metadata
+
+Per-run metadata for all 728 runs — 624 in the main experiment, 104 in the
+capacity arm — including the full hundred-epoch history of every run:
+
+> **`seed_level_metadata_v2.tar.gz`** — see Releases. SHA-256 is recorded in
+> `docs/03_EVIDENCE_LEDGER.md`.
+
+Unpack it. You should see `outputs_main/`, `outputs_cap512/` and `main_launch/`.
+
+### 2. Regenerate the tables
+
+```bash
+# Main results tables, in LaTeX
+python mamba_scan_study/analysis/analyze_main624.py \
+    --runs-root outputs_main --augmentation main_uniform --emit latex
+
+# Supplementary tables, from metadata alone (no checkpoints needed)
+python mamba_scan_study/analysis/make_supplementary_tables.py \
+    --runs-root outputs_main --cap01-root outputs_cap512 \
+    --analyze mamba_scan_study/analysis/analyze_main624.py \
+    --out supplementary_tables.tex
+```
+
+`analyze_main624.py` verifies each run against its completion marker and the
+SHA-256 of its own metadata, so it requires `final_checkpoint.pt` as well;
+`make_supplementary_tables.py` skips that one check and runs from metadata
+alone. Statistics are identical — the second imports the first rather than
+reimplementing it.
+
+### 3. Regenerate the figures
+
+```bash
+python mamba_scan_study/analysis/plot_ceiling.py --runs-root outputs_main --output fig_ceiling.pdf
+python mamba_scan_study/analysis/plot_components.py   --runs-root outputs_main
+python mamba_scan_study/analysis/plot_load_gating.py  --runs-root outputs_main
+python mamba_scan_study/analysis/plot_forest.py       --runs-root outputs_main
+python mamba_scan_study/analysis/plot_paths.py --grid 8
+python mamba_scan_study/analysis/plot_distance_dist.py --grid 32
+```
+
+### 4. The checks that will stop you if something is wrong
+
+Several scripts abort rather than emit a wrong number:
+
+- `plot_ceiling.py` cross-checks 70 values against the frozen table and refuses
+  to draw on any mismatch.
+- `equivalence_PR.py` cross-checks all ten `P_R` intervals against the
+  main-text table.
+- `cap01_judge.py --selftest` reproduces 24 published values at
+  `d_model = 256`, bit for bit, before it will judge the capacity arm.
+- `plot_distance_dist.py` verifies eight path-bank statistics against
+  `P0B_PREREG_FREEZE_L_AUC.md`.
+- `inertness_check_16.py` compares sixteen cells against archived values from an
+  earlier configuration.
+
+If one of these fails on your machine, the discrepancy is real and we would like
+to hear about it.
 
 ---
 
-## 五、常见问题
+## Environment
 
-- **显存不够（8GB）**：加 `--batch-size 64`，或 `--d-model 96`。
-- **太慢**：先用 `--epochs 50` 看趋势；`--no-amp` 关掉混合精度只在调试时用（开着更快）。
-- **Windows 多进程报错**：默认 `num_workers=0` 已避免；不要随意调大。
-- **mamba-ssm 装不上**：正常，Windows 上很难装。直接用默认 `gru` 也能验证方法，
-  GRU 是单向行扫描，同样存在垂直缺陷。
+The runs were executed on a single NVIDIA GeForce RTX 4090, driver 580.105.08,
+Linux 5.15.0, PyTorch 2.0.1 with CUDA 11.8. A full package lock
+(`requirements-lock.txt`) and the environment record (`env.txt`) are in Releases
+alongside the metadata archive.
+
+Analysis and plotting need only Python, NumPy and Matplotlib; no GPU.
 
 ---
 
-## 六、文件说明
+## What this study does not establish
 
-```
-cifar_rowmask/
-├── README.md          本文件
-├── requirements.txt   依赖
-├── config.py          所有超参数（可直接改）
-├── data.py            CIFAR-10 加载（自动下载 / 手动放置）
-├── masking.py         行遮掩 / 列遮掩 / patch 切分
-├── model.py           行扫描骨干 + MLP 重建头
-├── train.py           训练循环（分类损失 + λ·辅助损失）
-└── run.py             主入口（跑对照实验 + 汇总）
+Stated here because the paper states it and a repository should not read more
+confidently than its paper.
+
+- The apparatus keeps four scan paths in **disjoint channel groups**. This
+  isolates path identity, but it is not the fused multi-directional block of
+  standard Vision Mamba, and every result is conditional on that architecture.
+- All runs are 32×32 classification. The disagreement that motivates the study
+  is in segmentation, where locality enters the loss at every token.
+- The central quantity is identified as a **path-family by diversity
+  interaction**. Calling it geometry-specific adds an assumption this design does
+  not test: arbitrary and geometric paths also differ in locality, in axis bias
+  and in single-path accuracy.
+- Four seeds per cell move training randomness, the representative single path
+  and the channel assignment together, so the intervals do not support
+  generalisation over path draws.
+- A capacity arm at `d_model = 512` failed its own registered gate and returned
+  no measurement. The objection that the null on the arbitrary gain reflects
+  insufficient width therefore remains open.
+
+---
+
+## Citation
+
+```bibtex
+@article{tian2026separating,
+  author  = {Tian, Zhongyu and Jin, Guozhe},
+  title   = {Separating path geometry from branch heterogeneity in Vision Mamba:
+             a matched arbitrary-permutation control},
+  journal = {under review},
+  year    = {2026}
+}
 ```
 
-方法实现要点（与你之前验证过的设计一致）：
-- 重建头用 **MLP**（不是卷积）→ 逼信息进主干，而非解码器自己看邻居
-- 遮 **行**（不是列）→ 测垂直方向
-- 辅助头 **推理时丢弃** → 零额外开销（代码里 evaluate/测速都只用 backbone）
-- 两次前向：干净图算分类损失，遮掩图算辅助损失，加权相加
+## Contact
+
+Zhongyu Tian — <yunshen0126@outlook.com>
+Guozhe Jin — <jinguozhe@ybu.edu.cn>
+Department of Artificial Intelligence, School of Engineering, Yanbian University
