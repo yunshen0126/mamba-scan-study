@@ -7,7 +7,7 @@ plot_load_gating.py -- Figure 4: 负载门控在两个对比上的不对称。
 要呈现的事实 (论文 sec 6.3):
   contrast (1) structure  = mean(GEO_S*) - mean(RND_S*)
       其负载交互项在五个数据集上全部区间排除零
-  contrast (2) P_G - P_R  = geometry-specific
+  contrast (2) P_G - P_R  = path-family x diversity interaction
       其负载交互项只在 CIFAR-10 上区间排除零
 
 即: 扫描负载调节"排序质量"的价值远比它调节"排序多样性"的价值来得广泛。
@@ -164,7 +164,7 @@ def main() -> int:
         Line2D([], [], color=C_STRUCT, marker="o", ms=5.2, lw=1.3,
                label=r"structure  mean($G$ single) $-$ mean($R$ single)"),
         Line2D([], [], color=C_GEOSPEC, marker="o", ms=5.2, lw=1.3,
-               label=r"geometry-specific  $P_G - P_R$"),
+               label=r"interaction \u2461  $P_G - P_R$"),
         Line2D([], [], color="#8A8A96", marker="o", ms=5.2, lw=0,
                markerfacecolor="white", markeredgewidth=1.3,
                label="open marker: interval covers zero"),

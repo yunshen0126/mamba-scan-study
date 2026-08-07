@@ -70,8 +70,17 @@ is part of this study.
 
 ## Reproducing the results
 
-Everything in the paper is regenerated from per-run metadata. Model checkpoints
-are **not** required and are not distributed.
+Model checkpoints are **not** distributed. What the released metadata archive
+supports, and what it does not, is worth stating precisely:
+
+- Every figure, every supplementary table, and the equivalence and capacity-arm
+  analyses run from the metadata archive alone.
+- `analyze_main624.py`, which emits the main-text tables, additionally verifies
+  each run against its completion marker **and** the presence of
+  `final_checkpoint.pt`. It will report runs as incomplete if you have only the
+  archive. `make_supplementary_tables.py` performs the same statistics without
+  that one check — it imports `analyze_main624.py` rather than reimplementing
+  it — and is the entry point to use with the archive.
 
 ### 1. Get the run metadata
 
@@ -167,6 +176,18 @@ confidently than its paper.
   insufficient width therefore remains open.
 
 ---
+
+## Licence and archive
+
+Source code is released under the MIT licence; see [`LICENSE`](LICENSE). The
+preregistration documents, the evidence ledger and the per-run metadata archive
+are released under CC BY 4.0. The analysed datasets belong to their providers
+and are not redistributed here.
+
+The submission archive is deposited on Zenodo with a version DOI, so that the
+record cited in the paper does not change as this branch does:
+
+> **DOI: [10.5281/zenodo.XXXXXXX]** — fill in after the first Zenodo release
 
 ## Citation
 
