@@ -124,14 +124,21 @@ def excl(t) -> bool:
 
 
 def render(d: dict, output: Path) -> None:
-    """两个 panel, 横轴独立。d 的结构见 summarise()。"""
+    """三个 panel, 横轴各自独立。d 的结构见 summarise()。
+
+    左  train 超出 95% 标记线的量   (accuracy points, 诊断量)
+    中  十三条件的 val 跨度          (accuracy points, 诊断量)
+    右  注册对比 (1)(2)             (percentage points, 有零线与 95% CI)
+
+    三块分开是为了让"不可比较"由版式保证, 而不是由图注请求。
+    """
     from matplotlib.patches import Patch
     from matplotlib.lines import Line2D
 
-    fig, (axL, axR) = plt.subplots(
-        1, 2, figsize=(7.4, 3.5), sharey=True,
-        gridspec_kw={"width_ratios": [1.15, 1.0], "wspace": 0.07})
-    fig.subplots_adjust(left=0.150, right=0.985, top=0.88, bottom=0.28)
+    fig, (axA, axB, axR) = plt.subplots(
+        1, 3, figsize=(7.6, 3.3), sharey=True,
+        gridspec_kw={"width_ratios": [0.85, 0.85, 1.15], "wspace": 0.10})
+    fig.subplots_adjust(left=0.150, right=0.985, top=0.86, bottom=0.30)
 
     y = np.arange(len(DATASETS))[::-1].astype(float)
     labs = [lab for _, lab in DATASETS]
@@ -141,17 +148,18 @@ def render(d: dict, output: Path) -> None:
     for i, (key, _) in enumerate(DATASETS):
         x = d[key]
 
-        # 左: (a) 训练侧超出 95% 标记线的量
-        axL.barh(y[i] + 0.16, x["med_train"] - CEILING, height=0.26,
+        # 左: 训练侧超出 95% 标记线的量
+        axA.barh(y[i], x["med_train"] - CEILING, height=0.46,
                  color=C_TRAIN, zorder=3)
-        axL.text(x["med_train"] - CEILING + 0.22, y[i] + 0.16,
-                 f"{x['med_train']:.2f}%", va="center", fontsize=7.2, color=C_TEXT)
-        # 左: (b) 十三条件的泛化端跨度
-        axL.barh(y[i] - 0.16, x["spread"], height=0.26, color=C_SPREAD, zorder=3)
-        axL.text(x["spread"] + 0.22, y[i] - 0.16, f"{x['spread']:.2f}",
-                 va="center", fontsize=7.2, color=C_TEXT)
+        axA.text(x["med_train"] - CEILING + 0.10, y[i],
+                 f"{x['med_train']:.2f}%", va="center", fontsize=7.0, color=C_TEXT)
 
-        # 右: (c)(d) 同格内实际解析出的两个对比
+        # 中: 十三条件的泛化端跨度
+        axB.barh(y[i], x["spread"], height=0.46, color=C_SPREAD, zorder=3)
+        axB.text(x["spread"] + 0.35, y[i], f"{x['spread']:.2f}",
+                 va="center", fontsize=7.0, color=C_TEXT)
+
+        # 右: 同格内实际解析出的两个对比
         for k, colr, off in (("c1", C_STRUCT, 0.16), ("c2", C_GEOSPEC, -0.16)):
             m, lo, hi = x[k]
             solid = excl((m, lo, hi))
@@ -161,7 +169,7 @@ def render(d: dict, output: Path) -> None:
                          markerfacecolor=colr if solid else "white",
                          markeredgewidth=1.2)
 
-    for ax in (axL, axR):
+    for ax in (axA, axB, axR):
         for i in range(len(DATASETS) - 1):
             ax.axhline(y[i] - 0.5, color="#ECECF0", lw=0.8, zorder=0)
         ax.grid(axis="x", color=C_GRID, lw=0.6, zorder=0)
@@ -170,44 +178,41 @@ def render(d: dict, output: Path) -> None:
             ax.spines[sp].set_visible(False)
         for sp in ("left", "bottom"):
             ax.spines[sp].set_edgecolor("#B8B8C4")
-        ax.tick_params(labelsize=9, colors=C_TEXT)
+        ax.tick_params(labelsize=8.5, colors=C_TEXT)
         ax.set_ylim(y[-1] - 0.55, y[0] + 0.55)
 
-    axL.set_yticks(y)
-    axL.set_yticklabels(labs, fontsize=9.5, color=C_TEXT)
+    axA.set_yticks(y)
+    axA.set_yticklabels(labs, fontsize=9.5, color=C_TEXT)
+    axB.tick_params(labelleft=False)
     axR.tick_params(labelleft=False)
 
-    # 数值标签写在条形末端, 给右侧留出位置, 否则最长的一根会被裁掉。
-    _wid = max(max(x["med_train"] - CEILING, x["spread"]) for x in d.values())
-    axL.set_xlim(0, _wid * 1.16)
-    axL.set_xlabel("accuracy points\n(diagnostic quantities, not effect sizes)",
-                   fontsize=8.8, color=C_TEXT)
-    axR.set_xlabel("percentage points of validation accuracy\n(95% CI)",
-                   fontsize=8.8, color=C_TEXT)
-    axL.set_title("Saturation diagnostics", fontsize=9.6, color=C_TEXT, pad=6)
-    axR.set_title("Registered contrasts", fontsize=9.6, color=C_TEXT, pad=6)
+    # 数值标签写在条形末端, 各自留出位置
+    axA.set_xlim(0, max(x["med_train"] - CEILING for x in d.values()) * 1.42)
+    axB.set_xlim(0, max(x["spread"] for x in d.values()) * 1.20)
 
-    axL.legend(handles=[
-        Patch(facecolor=C_TRAIN, label="train acc median, amount above the 95% flag"),
-        Patch(facecolor=C_SPREAD, label="val acc spread across the 13 conditions"),
-    ], loc="upper center", bbox_to_anchor=(0.5, -0.26), frameon=False,
-        fontsize=7.8, handlelength=1.4, handletextpad=0.5)
+    axA.set_xlabel("train accuracy above\nthe 95% flag (points)",
+                   fontsize=8.2, color=C_TEXT)
+    axB.set_xlabel("val accuracy spread across\nthe 13 conditions (points)",
+                   fontsize=8.2, color=C_TEXT)
+    axR.set_xlabel("percentage points of validation accuracy\n(95% CI)",
+                   fontsize=8.2, color=C_TEXT)
+
+    axA.set_title("Ceiling margin", fontsize=9.2, color=C_TEXT, pad=6)
+    axB.set_title("Endpoint headroom", fontsize=9.2, color=C_TEXT, pad=6)
+    axR.set_title("Registered contrasts", fontsize=9.2, color=C_TEXT, pad=6)
 
     axR.legend(handles=[
         Line2D([], [], color=C_STRUCT, marker="o", ms=4.6, lw=1.2,
                label="structure contrast"),
         Line2D([], [], color=C_GEOSPEC, marker="o", ms=4.6, lw=1.2,
                markerfacecolor="white", markeredgewidth=1.2,
-               label=r"$P_G - P_R$  (open: interval covers zero)"),
-    ], loc="upper center", bbox_to_anchor=(0.5, -0.26), frameon=False,
+               label=r"interaction  $P_G - P_R$  (open: covers zero)"),
+    ], loc="upper center", bbox_to_anchor=(0.5, -0.30), frameon=False,
         fontsize=7.8, handlelength=1.4, handletextpad=0.5)
 
     fig.savefig(output, bbox_inches="tight")
     fig.savefig(output.with_suffix(".png"), dpi=300, bbox_inches="tight")
     print(f"已写出 {output} 与 {output.with_suffix('.png')}")
-
-
-# ---------------------------------------------------------------- 数值
 
 
 def dump_values(d: dict, path: Path) -> None:
