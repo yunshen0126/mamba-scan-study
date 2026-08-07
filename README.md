@@ -1,4 +1,3 @@
-
 # Separating path geometry from branch heterogeneity in Vision Mamba
 
 Code, preregistrations and analysis for a controlled study of scan order in

@@ -1116,3 +1116,22 @@ C0 在两个数据集上均不通过；C1/C2/C3 如实报告但不予解释，�
 > execution path unchanged. See the evidence ledger, entry 11.
 
 不展开、不解释、不辩护。指向 ledger 即可。
+
+## §8l 公开数据归档
+
+728 个 run（主实验 624 + 容量臂 104）的 seed 级 metadata、完成标记与批次台账，
+连同环境记录，发布于本仓库 Releases。不含模型 checkpoint（共 1.1 GB），
+论文中的全部表与图均可仅由 metadata 重生成。
+
+| 文件 | SHA-256 |
+|---|---|
+| `seed_level_metadata_v2.tar.gz` | `7e93b588b27db1d89dd7a9d20cbe697829215e1cf28f5a81002c9b9f4ff05694` |
+| `requirements-lock.txt` | `44fb58e4117e1e870f61dfe88a4a8b635ccc54b887e5f0cb25f203a3c9c9a8fd` |
+| `env.txt` | `39aa6fcf49186bcc192e5a453d41f3ad9f7492ab2e65f1428a48a031e13a5eb5` |
+
+环境：PyTorch 2.0.1 + CUDA 11.8，单张 NVIDIA GeForce RTX 4090，
+驱动 580.105.08，Linux 5.15.0。
+
+归档不含 `final_checkpoint.pt`，故 `analyze_main624.py` 的完成性校验在仅有
+归档的机器上会判 failed；`make_supplementary_tables.py` 跳过该项校验，
+统计口径与前者完全相同（按文件路径 import，不重新实现）。
