@@ -164,7 +164,7 @@ def main() -> int:
         Line2D([], [], color=C_STRUCT, marker="o", ms=5.2, lw=1.3,
                label=r"structure  mean($G$ single) $-$ mean($R$ single)"),
         Line2D([], [], color=C_GEOSPEC, marker="o", ms=5.2, lw=1.3,
-               label=r"interaction  $P_G - P_R$"),
+               label=r"interaction (2)  $P_G - P_R$"),
         Line2D([], [], color="#8A8A96", marker="o", ms=5.2, lw=0,
                markerfacecolor="white", markeredgewidth=1.3,
                label="open marker: interval covers zero"),

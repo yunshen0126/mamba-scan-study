@@ -107,19 +107,32 @@ python mamba_scan_study/analysis/make_supplementary_tables.py \
 ```
 
 `analyze_main624.py` verifies each run against its completion marker and the
-SHA-256 of its own metadata, so it requires `final_checkpoint.pt` as well;
-`make_supplementary_tables.py` skips that one check and runs from metadata
-alone. Statistics are identical — the second imports the first rather than
-reimplementing it.
+SHA-256 of its own metadata, and by default also requires `final_checkpoint.pt`
+to be present. Pass `--metadata-only` to relax that check to
+`completed.json` + metadata SHA-256, which is what the released archive
+supports; no statistical convention changes, and the two invocations agree
+byte-for-byte on every emitted table. `make_supplementary_tables.py` likewise
+runs from metadata alone and imports `analyze_main624.py` rather than
+reimplementing its statistics.
+
+**`--runs-root` must point at `outputs_main`, not at the archive root.** The
+capacity arm in `outputs_cap512` shares design-cell keys with the main
+experiment and is excluded from every registered judgement by
+`PREREG_CAP_01` section 0. Pointing at the archive root aborts with
+`duplicate metadata for design cell` rather than silently mixing the two.
 
 ### 3. Regenerate the figures
 
+Figures are not stored in this repository. They regenerate from the released
+metadata archive alone; no checkpoints are required.
+
 ```bash
-python mamba_scan_study/analysis/plot_ceiling.py --runs-root outputs_main --output fig_ceiling.pdf
-python mamba_scan_study/analysis/plot_components.py   --runs-root outputs_main
-python mamba_scan_study/analysis/plot_load_gating.py  --runs-root outputs_main
-python mamba_scan_study/analysis/plot_forest.py       --runs-root outputs_main
-python mamba_scan_study/analysis/plot_paths.py --grid 8
+mkdir -p figures
+python mamba_scan_study/analysis/plot_forest.py       --runs-root outputs_main --output figures/figure1_forest.pdf
+python mamba_scan_study/analysis/plot_components.py   --runs-root outputs_main --output figures/figure_components.pdf
+python mamba_scan_study/analysis/plot_load_gating.py  --runs-root outputs_main --output figures/figure4_load_gating.pdf
+python mamba_scan_study/analysis/plot_ceiling.py      --runs-root outputs_main --output figures/figure5_ceiling.pdf
+python mamba_scan_study/analysis/plot_paths.py         --grid 8
 python mamba_scan_study/analysis/plot_distance_dist.py --grid 32
 ```
 
