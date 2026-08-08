@@ -301,6 +301,11 @@ def _complete_cells(
 # 目录名解析, 不进入任何统计计算。main() 在解析参数后立即设置它。
 _D_MODEL = 256
 
+# 发布归档只含 metadata.json 与 completed.json，不含 final_checkpoint.pt。
+# --metadata-only 把完成性判定由三重校验降为双重（marker + metadata SHA），
+# 不改动任何统计口径。默认 True，即默认行为与既有 624-run 分析逐字节一致。
+_REQUIRE_CHECKPOINT = True
+
 
 def _expected_run_directory(
     runs_root: Path, dataset: str, backbone: str, augmentation: str, exp_id: str, reliance: str, seed: int
@@ -330,8 +335,9 @@ def _completion_status(
     metadata_path = directory / "metadata.json"
     record = records_by_metadata.get(metadata_path)
     marker_path = directory / "completed.json"
-    checkpoint_path = directory / "final_checkpoint.pt"
-    if record is None or not marker_path.is_file() or not checkpoint_path.is_file():
+    if record is None or not marker_path.is_file():
+        return "failed", None
+    if _REQUIRE_CHECKPOINT and not (directory / "final_checkpoint.pt").is_file():
         return "failed", None
     if (record.dataset, record.backbone, record.augmentation, record.exp_id, record.reliance, record.seed) != (
         dataset,
@@ -667,13 +673,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--emit", choices=("markdown", "latex"), default="markdown")
     parser.add_argument("--d-model", type=int, default=256,
                         help="产物目录名的宽度后缀; 256 时无后缀, 与既有 624 run 一致")
+    parser.add_argument("--metadata-only", action="store_true",
+                        help="不要求 final_checkpoint.pt 存在; 供发布归档使用, "
+                             "统计口径不变")
     return parser.parse_args(argv)
 
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = parse_args(argv)
-    global _D_MODEL
+    global _D_MODEL, _REQUIRE_CHECKPOINT
     _D_MODEL = args.d_model
+    _REQUIRE_CHECKPOINT = not args.metadata_only
     backbones = tuple(args.backbones) if args.backbones else ("mamba",)
     records = load_records(args.runs_root)
     if args.emit == "latex":
