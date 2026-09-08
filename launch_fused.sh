@@ -13,7 +13,7 @@ LBANK=$REPO/P0B_L_PATH_BANK_FROZEN.json
 CFG=/root/autodl-tmp/outputs_main/p0b_cifar10_main_uniform_mamba_GEO_DIV_R_high_seed0/metadata.json
 OUT=/root/autodl-tmp/outputs_fused
 DATA=/root/autodl-tmp/datasets
-PAR=2                       # concurrent runs; raise if the GPU has headroom
+PAR=3
 
 mkdir -p "$OUT" logs
 
@@ -38,16 +38,23 @@ PY
   ;;
 
 one)
-  # two epochs on a slice of the data: proves data, model, GPU and output layout
-  python3 run_fused_scan.py --bank "$BANK" --data-root "$DATA" --out "$OUT" \
-      --dataset cifar10 --exp-id GEO_DIV --seed 0 --epochs 2 --limit-batches 20
+  # ten epochs, no batch cap, on the seed and condition that collapsed under
+  # fp16. Under bf16 the training accuracy must be climbing, not stuck at 0.10.
+  python3 run_fused_scan.py --bank "$BANK" --lbank "$LBANK" \
+      --data-root "$DATA" --out "$OUT" \
+      --dataset cifar10 --exp-id RND_D1 --seed 1 --epochs 10
   ;;
 
 all)
-  echo "32 runs: 2 datasets x 4 conditions x 4 seeds"
+  echo "40 runs: CIFAR-10 six conditions, CIFAR-100 four, four seeds each"
   i=0
   for DS in cifar10 cifar100; do
-    for EXP in GEO_SG1 GEO_DIV RND_S1 RND_D1; do
+    if [ "$DS" = "cifar10" ]; then
+      CONDS="GEO_SG1 GEO_DIV RND_S1 RND_D1 LOC_S1 LOC_D1"
+    else
+      CONDS="GEO_SG1 GEO_DIV RND_S1 RND_D1"
+    fi
+    for EXP in $CONDS; do
       for SEED in 0 1 2 3; do
         NAME="${DS}_${EXP}_seed${SEED}"
         if [ -f "$OUT/p0b_${DS}_fused_scan_mamba_${EXP}_R_high_seed${SEED}/metadata.json" ]; then
@@ -56,7 +63,7 @@ all)
         fi
         echo "launch $NAME"
         OMP_NUM_THREADS=1 python3 run_fused_scan.py \
-            --config-from "$CFG" --bank "$BANK" \
+            --config-from "$CFG" --bank "$BANK" --lbank "$LBANK" \
             --data-root "$DATA" --out "$OUT" \
             --dataset "$DS" --exp-id "$EXP" --seed "$SEED" \
             > "logs/${NAME}.log" 2>&1 &
