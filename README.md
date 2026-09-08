@@ -1,221 +1,173 @@
-# Separating path geometry from branch heterogeneity in Vision Mamba
+# Multi-path scan gains in Vision Mamba
 
-Code, preregistrations and analysis for a controlled study of scan order in
-vision state-space models.
+Code, frozen path banks, per-run records and analysis scripts for the study of
+what a multi-path scan buys in a vision state-space model at fixed capacity.
 
-**The question.** Multi-direction scanning is credited with improving access to
-two-dimensional structure. The comparison behind that credit — one scan path
-against `k` paths at fixed capacity — moves two things at once: geometric
-complementarity, and the mere fact that the branches differ. This repository
-holds an experiment that separates them, by adding the control arm the
-literature we reviewed does not run: `k` distinct **arbitrary** permutations,
-matched to the geometric set in path count and in capacity, carrying no spatial
-structure.
-
-**The headline.** The arbitrary multi-path gain is not resolved from zero in any
-of the ten dataset-by-load cells, with point estimates inside `[-0.16, +0.17]`
-percentage points. The difference between the two gains is resolved on one
-dataset of five, so the registered proposition fails its own decision rule. The
-contribution is a missing comparison and a reporting norm, not an effect.
+A state-space model applied to an image has to serialise the patch grid, and the
+ordering costs nothing: parameter count and nominal arithmetic are unchanged.
+Multi-direction scanning is justified in the literature by the claim that one
+direction cannot reach structure lying across the other spatial axis, and the
+evidence offered for it compares `k` copies of one path against `k` distinct
+geometric paths. That comparison changes the diversity of the paths and the
+spatial axes they cover at the same time. This repository contains the
+comparison that separates them: `k` distinct **arbitrary** permutations, matched
+in path count, parameters and nominal arithmetic.
 
 ---
 
-## Read this first if you are reviewing the paper
-
-| You want | Go to |
-|---|---|
-| The registered criteria, fixed before any run | [`MAIN_PREREG_01.md`](MAIN_PREREG_01.md) |
-| What we committed to say for each possible outcome | [`MAIN_PREREG_ADDENDUM_03_CONTINGENCY.md`](MAIN_PREREG_ADDENDUM_03_CONTINGENCY.md) |
-| The statistical plan | [`P0B_PREREG_ANALYSIS_PLAN.md`](P0B_PREREG_ANALYSIS_PLAN.md) |
-| Every erratum found during the study, including the ones that reflect badly on us | [`docs/03_EVIDENCE_LEDGER.md`](docs/03_EVIDENCE_LEDGER.md) |
-| External timestamps of the criteria hashes | [`yunshen0126/prereg-timestamps`](https://github.com/yunshen0126/prereg-timestamps) |
-| The capacity arm that failed its own registered gate | [`CAP01_RESULTS.md`](CAP01_RESULTS.md) |
-
-**Preregistration is the point of this repository, not a formality.** Criteria,
-path banks and validation splits were content-hashed and pushed to an
-independent repository before the runs began; GitHub's server-side timestamps on
-those pushes are what make "fixed in advance" checkable by someone who does not
-trust us. The evidence ledger records where we fell short of our own protocol.
-
----
-
-## Repository layout
+## What is here
 
 ```
-mamba_scan_study/
-  experiments/          runners and batch launchers with preflight checks
-  analysis/             every table and figure in the paper is produced here
-  models/  data/        backbone, channel-split apparatus, path handling
-docs/
-  03_EVIDENCE_LEDGER.md the errata record
-  P0B_CONFIG_TABLE.md   the frozen configuration, field by field
-  prefill_snapshot/     pre-result snapshots of two documents, with diffs
-cap01/                  reports from the capacity arm
-*.md                    preregistrations, freeze records and stage reports
-P0B_*_FROZEN.json       the frozen path banks and validation splits
+P0B_R_PATH_BANK_FROZEN.json     three frozen banks of four arbitrary permutations
+P0B_L_PATH_BANK_FROZEN.json     the locality-matched orbit L1..L4
+P0B_EUROSAT_SPLIT_FROZEN.json   the frozen EuroSAT validation split
+P0B_RUN_LEDGER_104.csv          condition-to-path assignment for the main design
+
+mamba_scan_study/               training pipeline for the main design
+run_fused_scan.py               the fused-block arm, standalone
+launch_fused.sh                 launcher for the fused arm
+
+scan_geometry.py                locality and axis-spread measures for a path set
+export_all_results.py           all three batches -> one tidy CSV
+export_main_cells.py            the ten cells of the main design
+compute_2x2.py                  P_G, P_R, P_L and the interaction, per cell
+make_fig_28.py                  Fig. 2 of the Letter
+mkbbl.py                        refs.bib -> a static IEEE-style bibliography
+
+results/results_all.csv         one row per run: the table every number comes from
 ```
-
-### Legacy files at the repository root
-
-`config.py`, `data.py`, `masking.py`, `model.py`, `run.py`, `train.py`,
-`verify_outdirs.py`, `run_batch_*.sh`, `requirements.txt` and `tools/` belong to
-an **earlier, unrelated experiment** on row-masking reconstruction, from which
-this repository grew. **They are not used by any result in the paper.** They are
-kept rather than deleted because the evidence ledger refers to commits that
-contain them and removing them would make that record harder to follow. Nothing
-outside `mamba_scan_study/`, `docs/`, `cap01/` and the preregistration documents
-is part of this study.
 
 ---
 
-## Reproducing the results
+## The three batches
 
-Model checkpoints are **not** distributed. What the released metadata archive
-supports, and what it does not, is worth stating precisely:
+They are analysed separately and never pooled. The differences are the reason.
 
-- Every figure, every supplementary table, and the equivalence and capacity-arm
-  analyses run from the metadata archive alone.
-- `analyze_main624.py`, which emits the main-text tables, additionally verifies
-  each run against its completion marker **and** the presence of
-  `final_checkpoint.pt`. It will report runs as incomplete if you have only the
-  archive. `make_supplementary_tables.py` performs the same statistics without
-  that one check — it imports `analyze_main624.py` rather than reimplementing
-  it — and is the entry point to use with the archive.
+| | main design | earlier batch | fused arm |
+|---|---|---|---|
+| runs | 520 (+104 recurrent) | 360 | 40 |
+| module | channel-split, four 64-d branches | channel-split | fused, one shared 256-d operator |
+| combination | concatenate before the classifier | concatenate | sum inside the block |
+| datasets | CIFAR-10, three MedMNIST organ planes, EuroSAT | CIFAR-10, CIFAR-100 | CIFAR-10, CIFAR-100 |
+| granularities | L = 64, 1024 | L = 64, 256, 1024 | L = 1024 |
+| widths | d = 256 | d = 64, 256 | d = 256 |
+| operators | Mamba (+ a GRU arm on CIFAR-10) | Mamba, GRU | Mamba |
+| seeds | 4 | 5 | 4 |
+| augmentation | none | random crop and horizontal flip | none |
+| endpoint | frozen validation split, mean of epochs 80–100 | CIFAR test split, mean of the final 20 | frozen validation split, mean of the final 20 |
+| arbitrary paths | the frozen banks above | drawn per run from a run seed | the frozen banks above |
+| precision | fp16 mixed | fp16 mixed | bf16 mixed |
 
-### 1. Get the run metadata
+The fused arm uses bf16 because the four scans are summed inside the block
+before being averaged, and the intermediate sum overflows fp16 on some seeds.
+All forty of its runs use the same setting.
 
-Per-run metadata for all 728 runs — 624 in the main experiment, 104 in the
-capacity arm — including the full hundred-epoch history of every run:
+---
 
-> **`seed_level_metadata_v2.tar.gz`** — see Releases. SHA-256 is recorded in
-> `docs/03_EVIDENCE_LEDGER.md`.
+## Conditions
 
-Unpack it. You should see `outputs_main/`, `outputs_cap512/` and `main_launch/`.
+Within each path family, the repeated condition places one path in all four scan
+slots and the distinct condition places four different paths in one model.
+Parameter count and nominal arithmetic are identical across every condition
+compared.
 
-### 2. Regenerate the tables
+| group | main design | fused arm | paths |
+|---|---|---|---|
+| `GEO_S` | `GEO_SG1`–`GEO_SG4` | `GEO_SG1` | one canonical raster, four copies |
+| `GEO_DIV` | `GEO_DIV` | `GEO_DIV` | G1 G2 G3 G4 |
+| `RND_S` | `RND_S1`–`RND_S3` | `RND_S1` | one arbitrary permutation, four copies |
+| `RND_D` | `RND_D1`–`RND_D3` | `RND_D1` | four distinct arbitrary permutations |
+| `LOC_S` | `LOC_S` | `LOC_S1` | one locality-matched path, four copies |
+| `LOC_D` | `LOC_D` | `LOC_D1` | L1 L2 L3 L4 |
+
+The quantities reported are, per seed and then averaged:
+
+```
+P_F  = accuracy(F_distinct) - accuracy(F_repeated)     for F in {G, R, L}
+D    = P_G - P_R                                        the interaction
+S    = accuracy(G_repeated) - accuracy(R_repeated)      single-path structure
+```
+
+`P_R` is measured inside a family carrying no canonical spatial order, so a gain
+there is attributable to the paths differing and to nothing else.
+
+---
+
+## Reproducing the numbers
+
+Every table and figure in the Letter is regenerated from the released records
+with no GPU time.
 
 ```bash
-# Main results tables, in LaTeX
-python mamba_scan_study/analysis/analyze_main624.py \
-    --runs-root outputs_main --augmentation main_uniform --emit latex
+# one row per run, across all three batches
+python3 export_all_results.py \
+    --main    <path>/outputs_main \
+    --earlier <path>/outputs \
+    --fused   <path>/outputs_fused \
+    --out results/results_all.csv
 
-# Supplementary tables, from metadata alone (no checkpoints needed)
-python mamba_scan_study/analysis/make_supplementary_tables.py \
-    --runs-root outputs_main --cap01-root outputs_cap512 \
-    --analyze mamba_scan_study/analysis/analyze_main624.py \
-    --out supplementary_tables.tex
+# Table I: the ten cells of the main design
+python3 export_main_cells.py <path>/outputs_main --tail 21
+
+# Table II and the fused arm
+python3 compute_2x2.py <path>/outputs   --tail 20    # earlier batch
+python3 compute_2x2.py <path>/outputs_fused --tail 20
+
+# Fig. 2
+python3 make_fig_28.py
+
+# geometry of the three path families
+python3 -c "
+from scan_geometry import gen_G, gen_R, describe, adjacent_pairs
+p = adjacent_pairs(32)
+print(describe('G', gen_G(32), 32, p))
+print(describe('R', gen_R(32, 17071), 32, p))"
 ```
 
-`analyze_main624.py` verifies each run against its completion marker and the
-SHA-256 of its own metadata, and by default also requires `final_checkpoint.pt`
-to be present. Pass `--metadata-only` to relax that check to
-`completed.json` + metadata SHA-256, which is what the released archive
-supports; no statistical convention changes, and the two invocations agree
-byte-for-byte on every emitted table. `make_supplementary_tables.py` likewise
-runs from metadata alone and imports `analyze_main624.py` rather than
-reimplementing its statistics.
+The endpoint window differs between batches: the main design terminates its
+schedule at zero, so epochs 99 and 100 are identical and the window is epochs
+80–100; the other two batches use the final twenty epochs. `--tail 21` and
+`--tail 20` reproduce the published values exactly.
 
-**`--runs-root` must point at `outputs_main`, not at the archive root.** The
-capacity arm in `outputs_cap512` shares design-cell keys with the main
-experiment and is excluded from every registered judgement by
-`PREREG_CAP_01` section 0. Pointing at the archive root aborts with
-`duplicate metadata for design cell` rather than silently mixing the two.
+---
 
-### 3. Regenerate the figures
-
-Figures are not stored in this repository. They regenerate from the released
-metadata archive alone; no checkpoints are required.
+## Running the fused arm
 
 ```bash
-mkdir -p figures
-python mamba_scan_study/analysis/plot_forest.py       --runs-root outputs_main --output figures/figure1_forest.pdf
-python mamba_scan_study/analysis/plot_components.py   --runs-root outputs_main --output figures/figure_components.pdf
-python mamba_scan_study/analysis/plot_load_gating.py  --runs-root outputs_main --output figures/figure4_load_gating.pdf
-python mamba_scan_study/analysis/plot_ceiling.py      --runs-root outputs_main --output figures/figure5_ceiling.pdf
-python mamba_scan_study/analysis/plot_paths.py         --grid 8
-python mamba_scan_study/analysis/plot_distance_dist.py --grid 32
+bash launch_fused.sh selftest   # index round trip, fusion equivalence, capacity match
+bash launch_fused.sh gpu        # interpreter, torch build, visible devices
+bash launch_fused.sh one        # ten epochs on the hardest condition
+bash launch_fused.sh all        # the forty runs
 ```
 
-### 4. The checks that will stop you if something is wrong
+`selftest` checks four things before any GPU time is spent: that every path and
+its inverse satisfy `pi[order] == arange(N)`; that gather followed by scatter is
+the identity in all four slots; that four copies of one path, averaged, reproduce
+a single scan along that path exactly; and that parameter count does not depend
+on how many of the four paths are distinct. All four must pass.
 
-Several scripts abort rather than emit a wrong number:
-
-- `plot_ceiling.py` cross-checks 70 values against the frozen table and refuses
-  to draw on any mismatch.
-- `equivalence_PR.py` cross-checks all ten `P_R` intervals against the
-  main-text table.
-- `cap01_judge.py --selftest` reproduces 24 published values at
-  `d_model = 256`, bit for bit, before it will judge the capacity arm.
-- `plot_distance_dist.py` verifies eight path-bank statistics against
-  `P0B_PREREG_FREEZE_L_AUC.md`.
-- `inertness_check_16.py` compares sixteen cells against archived values from an
-  earlier configuration.
-
-If one of these fails on your machine, the discrepancy is real and we would like
-to hear about it.
+A run that has not learned by epoch 8 is aborted rather than written out, and a
+non-finite loss stops the run immediately.
 
 ---
 
-## Environment
+## Path representation
 
-The runs were executed on a single NVIDIA GeForce RTX 4090, driver 580.105.08,
-Linux 5.15.0, PyTorch 2.0.1 with CUDA 11.8. A full package lock
-(`requirements-lock.txt`) and the environment record (`env.txt`) are in Releases
-alongside the metadata archive.
+Every permutation is stored as an index vector `order`, where `order[t]` is the
+row-major index of the cell visited at step `t`, together with its inverse `pi`,
+where `pi[u]` is the step at which cell `u` is visited. The two satisfy
 
-Analysis and plotting need only Python, NumPy and Matplotlib; no GPU.
-
----
-
-## What this study does not establish
-
-Stated here because the paper states it and a repository should not read more
-confidently than its paper.
-
-- The apparatus keeps four scan paths in **disjoint channel groups**. This
-  isolates path identity, but it is not the fused multi-directional block of
-  standard Vision Mamba, and every result is conditional on that architecture.
-- All runs are 32×32 classification. The disagreement that motivates the study
-  is in segmentation, where locality enters the loss at every token.
-- The central quantity is identified as a **path-family by diversity
-  interaction**. Calling it geometry-specific adds an assumption this design does
-  not test: arbitrary and geometric paths also differ in locality, in axis bias
-  and in single-path accuracy.
-- Four seeds per cell move training randomness, the representative single path
-  and the channel assignment together, so the intervals do not support
-  generalisation over path draws.
-- A capacity arm at `d_model = 512` failed its own registered gate and returned
-  no measurement. The objection that the null on the arbitrary gain reflects
-  insufficient width therefore remains open.
-
----
-
-## Licence and archive
-
-Source code is released under the MIT licence; see [`LICENSE`](LICENSE). The
-preregistration documents, the evidence ledger and the per-run metadata archive
-are released under CC BY 4.0. The analysed datasets belong to their providers
-and are not redistributed here.
-
-The submission archive is deposited on Zenodo with a version DOI, so that the
-record cited in the paper does not change as this branch does:
-
-> **DOI: [10.5281/zenodo.XXXXXXX]** — fill in after the first Zenodo release
-
-## Citation
-
-```bibtex
-@article{tian2026separating,
-  author  = {Tian, Zhongyu and Jin, Guozhe},
-  title   = {Separating path geometry from branch heterogeneity in Vision Mamba:
-             a matched arbitrary-permutation control},
-  journal = {under review},
-  year    = {2026}
-}
+```
+pi[order] == arange(N)
 ```
 
-## Contact
+and this is asserted wherever a path is constructed or loaded. Getting the
+inverse wrong is the failure mode this guards against: a scan gathers along
+`order` and scatters along `pi`, and swapping them silently produces a different
+model rather than an error.
 
-Zhongyu Tian — <yunshen0126@outlook.com>
-Guozhe Jin — <jinguozhe@ybu.edu.cn>
-Department of Artificial Intelligence, School of Engineering, Yanbian University
+---
+
+## License and contact
+
+MIT. Questions to yunshen0126@outlook.com.

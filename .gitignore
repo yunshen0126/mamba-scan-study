@@ -1,11 +1,38 @@
-__pycache__/
-*.pyc
-/data/
-datasets/
-*.pt
-*.npz
-logs/
-mamba_scan_study/outputs/
-/outputs/
 
+!P0B_*.csv
+!P0B_*.json
+!results/*.csv
+# --- append to .gitignore -------------------------------------------------
+# keep: the frozen banks, the ledger, results/results_all.csv and all scripts
+# latex build products
+# logs
+# python
+# training outputs: checkpoints and predictions are large and regenerable
 **/.ipynb_checkpoints/
+**/checkpoints/
+**/predictions/
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.npz
+*.out
+*.pt
+*.pth
+*.pyc
+*.synctex.gz
+*.tar.gz
+.ipynb_checkpoints/
+/data/
+/outputs/
+__pycache__/
+datasets/
+logs/
+logs_*.txt
+mamba_scan_study/outputs/
+nohup.out
+outputs/
+outputs_fused/
+outputs_main/
