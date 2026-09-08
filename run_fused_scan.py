@@ -325,7 +325,19 @@ def train(args):
         prog = (step - warm) / max(total - warm, 1)
         return args.base_lr * 0.5 * (1 + math.cos(math.pi * min(prog, 1.0)))
 
-    scaler = torch.cuda.amp.GradScaler(enabled=args.amp and dev == "cuda")
+    use_amp = dev == "cuda" and args.precision != "fp32"
+    amp_dtype = torch.bfloat16 if args.precision == "bf16" else torch.float16
+    bf16_ok = getattr(torch.cuda, "is_bf16_supported", lambda: True)()
+    if args.precision == "bf16" and dev == "cuda" and not bf16_ok:
+        print("  bf16 unsupported on this device, falling back to fp32")
+        use_amp, args.precision = False, "fp32"
+    # a scaler is only needed for fp16; bf16 keeps the fp32 exponent range
+    need_scaler = use_amp and amp_dtype is torch.float16
+    try:                                    # torch >= 2.3
+        scaler = torch.amp.GradScaler("cuda", enabled=need_scaler)
+    except (AttributeError, TypeError):     # older torch
+        scaler = torch.cuda.amp.GradScaler(enabled=need_scaler)
+    print(f"  precision {args.precision}")
     hist, step = [], 0
     t0 = time.time()
     for ep in range(1, args.epochs + 1):
@@ -339,9 +351,12 @@ def train(args):
                 gp["lr"] = lr
             x, y = x.to(dev, non_blocking=True), y.to(dev, non_blocking=True)
             opt.zero_grad(set_to_none=True)
-            with torch.cuda.amp.autocast(enabled=args.amp and dev == "cuda"):
+            with torch.cuda.amp.autocast(enabled=use_amp, dtype=amp_dtype):
                 out = model(x)
                 loss = F.cross_entropy(out, y)
+            if not torch.isfinite(loss):
+                print(f"  non-finite loss at epoch {ep} step {step}; aborting")
+                return 3
             scaler.scale(loss).backward()
             if args.grad_clip:
                 scaler.unscale_(opt)
@@ -354,6 +369,11 @@ def train(args):
         vacc = evaluate(model, va, dev)
         hist.append({"epoch": ep, "learning_rate": lr,
                      "train_accuracy": hit / tot, "validation_accuracy": vacc})
+        if ep >= args.collapse_epoch and hit / tot < args.collapse_acc:
+            print(f"  collapsed: train accuracy {hit/tot:.4f} at epoch {ep}, "
+                  f"below {args.collapse_acc}. Aborting rather than writing a "
+                  f"dead run.")
+            return 3
         if ep % 10 == 0 or ep == 1:
             print(f"  ep {ep:3d}  train {hit/tot:.4f}  val {vacc:.4f}  "
                   f"lr {lr:.2e}  {time.time()-t0:.0f}s")
@@ -377,7 +397,8 @@ def train(args):
                              "LOC_S1": ["L1"] * 4,
                              "LOC_D1": ["L1", "L2", "L3", "L4"]}[args.exp_id],
         "training_config": {"epochs": args.epochs, "base_lr": args.base_lr,
-                            "micro_batch": args.micro_batch, "amp": args.amp,
+                            "micro_batch": args.micro_batch,
+                            "precision": args.precision,
                             "grad_clip": args.grad_clip,
                             "weight_decay": args.weight_decay,
                             "warmup_epochs": args.warmup_epochs},
@@ -418,9 +439,17 @@ def main():
     ap.add_argument("--grad-clip", type=float, default=1.0)
     ap.add_argument("--micro-batch", type=int, default=128)
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--precision", default="bf16",
+                    choices=["bf16", "fp16", "fp32"],
+                    help="bf16 has fp32 exponent range; the four scans are summed "
+                         "inside the block, so fp16 overflows on some seeds")
     ap.add_argument("--amp", action="store_true", default=True)
     ap.add_argument("--allow-cpu", action="store_true",
                     help="permit CPU training; only sensible with --limit-batches")
+    ap.add_argument("--collapse-epoch", type=int, default=8,
+                    help="epoch from which the collapse guard is active")
+    ap.add_argument("--collapse-acc", type=float, default=0.15,
+                    help="abort if training accuracy is still below this")
     ap.add_argument("--limit-batches", type=int, default=0,
                     help="cap training batches per epoch (0 = no cap)")
     args = ap.parse_args()
@@ -429,7 +458,7 @@ def main():
         cfg = json.load(open(args.config_from)).get("training_config", {})
         for k, dest in (("epochs", "epochs"), ("base_lr", "base_lr"),
                         ("micro_batch", "micro_batch"), ("d_model", "d_model"),
-                        ("grad_clip", "grad_clip"), ("amp", "amp")):
+                        ("grad_clip", "grad_clip")):
             if k in cfg and cfg[k] is not None:
                 setattr(args, dest, cfg[k])
         print(f"hyperparameters copied from {args.config_from}: "

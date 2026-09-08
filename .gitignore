@@ -33,6 +33,6 @@ logs/
 logs_*.txt
 mamba_scan_study/outputs/
 nohup.out
-outputs/
-outputs_fused/
-outputs_main/
+/outputs/
+/outputs_fused/
+/outputs_main/
